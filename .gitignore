@@ -1,0 +1,18 @@
+# Android / Gradle
+*.iml
+.gradle/
+local.properties
+.idea/
+.DS_Store
+build/
+captures/
+.kotlin/
+*.jks
+
+# Python
+__pycache__/
+
+# Sample videos never go in the repo: big, and they carry the camera's serial number (and GPS)
+*.insv
+*.lrv
+*.mp4

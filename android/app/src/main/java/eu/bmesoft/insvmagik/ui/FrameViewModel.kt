@@ -17,7 +17,10 @@ import eu.bmesoft.insvmagik.view.Reframer
 import eu.bmesoft.insvmagik.view.Rig
 import eu.bmesoft.insvmagik.view.SeamCheck
 import eu.bmesoft.insvmagik.view.ViewParams
+import eu.bmesoft.insvmagik.media.Exporter
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -44,6 +47,9 @@ class FrameViewModel(app: Application) : AndroidViewModel(app) {
         val seam: SeamCheck.Result? = null,
         val busy: String? = null,
         val error: String? = null,
+        /** 0..1 while exporting, null otherwise. */
+        val exportProgress: Float? = null,
+        val exportResult: String? = null,
     ) {
         val durationUs: Long get() = tracks.maxOfOrNull { it.durationUs } ?: 0
     }
@@ -52,9 +58,10 @@ class FrameViewModel(app: Application) : AndroidViewModel(app) {
     val state: StateFlow<State> = _state.asStateFlow()
 
     /** What the renderer needs; a new value re-renders, intermediate ones are skipped. */
-    private class Job(val rig: Rig, val images: List<LensImage?>, val view: ViewParams, val seam: Boolean)
+    private class RenderJob(val rig: Rig, val images: List<LensImage?>, val view: ViewParams, val seam: Boolean)
 
-    private val jobs = MutableStateFlow<Job?>(null)
+    private val jobs = MutableStateFlow<RenderJob?>(null)
+    private var exportJob: Job? = null
     private var rig: Rig? = null
 
     init {
@@ -124,7 +131,48 @@ class FrameViewModel(app: Application) : AndroidViewModel(app) {
         val r = rig ?: return
         val s = _state.value
         val images = List(r.lenses.size) { s.grabbed.getOrNull(it)?.image }
-        jobs.value = Job(r, images, s.view, seam || jobs.value == null)
+        jobs.value = RenderJob(r, images, s.view, seam || jobs.value == null)
+    }
+
+    /** Stage 2: the whole clip through the current view (flat, 1080p) into Movies/insvMagik. */
+    fun export() {
+        val s = _state.value
+        if (s.exportProgress != null || s.tracks.isEmpty()) return
+        val rig = CameraRig.from(s.calibrations, s.tracks[0].width, s.tweak)
+        if (rig == null) {
+            _state.update { it.copy(exportResult = "No lens calibration of the XI shape: can't export.") }
+            return
+        }
+        val audio = s.files.flatMap { it.tracks }.firstOrNull { it.isAudio }
+        val name = s.files.first().name.substringBeforeLast('.') + "_flat"
+        val view = s.view.copy(projection = ViewParams.Projection.FLAT)
+        _state.update { it.copy(exportProgress = 0f, exportResult = null) }
+        exportJob = viewModelScope.launch {
+            val text = try {
+                var shown = 0
+                val r = Exporter.export(getApplication(), s.tracks, audio, rig, view, name) { p ->
+                    val permille = (p * 1000).toInt()
+                    if (permille - shown >= 5) {
+                        shown = permille
+                        _state.update { it.copy(exportProgress = p) }
+                    }
+                }
+                String.format(
+                    Locale.US, "Saved Movies/insvMagik/%s: %d frames, %.1f s of video in %.1f s = %.2fx real time, %.1f MB%s",
+                    r.displayName, r.frames, r.mediaUs / 1e6, r.wallMs / 1e3, r.speed, r.bytes / 1e6,
+                    if (audio != null) ", audio copied" else ", no audio in the source",
+                )
+            } catch (e: CancellationException) {
+                "Export cancelled; the unfinished file was deleted."
+            } catch (e: Exception) {
+                "Export failed: ${e.javaClass.simpleName}: ${e.message}"
+            }
+            _state.update { it.copy(exportProgress = null, exportResult = text) }
+        }
+    }
+
+    fun cancelExport() {
+        exportJob?.cancel()
     }
 
     /** Plain text for the Copy button: what's on screen, to paste into a chat. */
@@ -141,6 +189,7 @@ class FrameViewModel(app: Application) : AndroidViewModel(app) {
             append("lens 1 tweak yaw ${n(s.tweak.yaw)} pitch ${n(s.tweak.pitch)} roll ${n(s.tweak.roll)}\n")
             append("render ${s.renderMs} ms; seam match ${s.seam?.let { String.format(Locale.US, "%.3f over %d directions", it.correlation, it.samples) } ?: "–"}\n")
             s.error?.let { append("! $it\n") }
+            s.exportResult?.let { append("export: $it\n") }
         }
     }
 

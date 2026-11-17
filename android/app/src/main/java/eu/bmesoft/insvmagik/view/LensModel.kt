@@ -52,16 +52,16 @@ class Equidistant(
  * ([p1], [p2]) distortion. The XI calibration string looks like this model (docs/insv-format.md).
  */
 class Omnidirectional(
-    private val cx: Double,
-    private val cy: Double,
-    private val fx: Double,
-    private val fy: Double,
-    private val xi: Double,
-    private val k1: Double = 0.0,
-    private val k2: Double = 0.0,
-    private val k3: Double = 0.0,
-    private val p1: Double = 0.0,
-    private val p2: Double = 0.0,
+    val cx: Double,
+    val cy: Double,
+    val fx: Double,
+    val fy: Double,
+    val xi: Double,
+    val k1: Double = 0.0,
+    val k2: Double = 0.0,
+    val k3: Double = 0.0,
+    val p1: Double = 0.0,
+    val p2: Double = 0.0,
     override val maxAngle: Double,
 ) : LensModel {
     override fun project(x: Double, y: Double, z: Double, out: DoubleArray): Boolean {

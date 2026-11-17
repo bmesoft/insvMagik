@@ -35,6 +35,10 @@ android {
         compose = true
         buildConfig = true
     }
+    testOptions {
+        // The sample-frame tests hold two 8K-class lens pictures in memory.
+        unitTests.all { it.maxHeapSize = "3g" }
+    }
 }
 
 dependencies {

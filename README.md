@@ -4,9 +4,9 @@ An Android tool that turns 360° recordings from Insta360 cameras (`.insv`) into
 **reframed MP4** videos right on the phone: pick the clip's files, choose where to look, export
 to the gallery (and edit further in mobiCut). No Insta360 app, no PC.
 
-**Status:** stage 0 of the [plan](docs/plan.md): a probe that reads the files and measures whether
-the phone can decode them. Internal APK only; this repo is private for now and may go public if
-the converter works out.
+**Status:** stage 1 of the [plan](docs/plan.md): a probe that reads the files and measures whether
+the phone can decode them, and a Frame tab that shows a reframed view of one frame. Internal APK
+only; this repo is private for now and may go public if the converter works out.
 
 Part of bmesoft; the repos sit side by side:
 
@@ -26,7 +26,8 @@ bmesoft/
 | [docs/insv-format.md](docs/insv-format.md) | what we know about `.insv` (from the samples) |
 | `android/` | the app, a self-contained Gradle project (open this folder in Android Studio) |
 | `android/app/src/main/java/eu/bmesoft/insvmagik/insv/` | the file format: trailer, camera info, calibration, gyro, exposure (pure Kotlin, unit-tested) |
-| `…/media/` | Android media: tracks, decoder limits, the decode test |
+| `…/view/` | the reframing maths: rotations, lens models, the camera rig from its calibration, the CPU renderer, the seam check (pure Kotlin, unit-tested) |
+| `…/media/` | Android media: tracks, decoder limits, the decode test, one-frame grabbing |
 | `…/ui/` | Compose screen |
 | [tools/install.ps1](tools/install.ps1) | build, install on the USB-connected phone, launch |
 | [tools/insv-probe.py](tools/insv-probe.py) | the same file analysis on the PC (Python, standard library) |
@@ -41,8 +42,10 @@ Same Gradle plugin versions as mobiCut.
 .\tools\install.ps1 -ApkOnly    # just the APK: android\app\build\outputs\apk\debug\app-debug.apk
 ```
 
-In the app: **Choose files** (both `…_00_…` and `…_10_…` of a clip, or the single file of newer
-cameras), read the report, **Decode test**, **Copy** and paste the report where it's needed.
+In the app, **Probe** tab: **Choose files** (both `…_00_…` and `…_10_…` of a clip, or the single
+file of newer cameras), read the report, **Decode test**, **Copy** and paste the report where it's
+needed. **Frame** tab: the middle of the clip as a flat view; the time slider picks another frame,
+the sliders look around, **Sphere** shows the whole panorama, **Copy** gives the settings.
 
 The `.insv` must be on the phone first: USB mass-storage mode of the camera or a card reader
 (see the plan's open questions).
@@ -53,6 +56,8 @@ The `.insv` must be on the phone first: USB mass-storage mode of the camera or a
 cd android
 .\gradlew.bat testDebugUnitTest                                   # parsers, synthetic data
 $env:INSV_SAMPLES = "$env:USERPROFILE\Downloads"; .\gradlew.bat testDebugUnitTest   # + real samples
+# + render real frames and check the seam (make the frames with ffmpeg, see SampleRenderTest.kt):
+$env:INSV_FRAMES = "C:\path\to\frames"; $env:INSV_RENDER = "C:\path\to\out"; .\gradlew.bat testDebugUnitTest
 python -I ..\tools\insv-probe.py "$env:USERPROFILE\Downloads\VID_20261109_174428_032.insv"
 ```
 

@@ -71,11 +71,23 @@ Scale to the video with `videoLensSize / gridHeight`.
 | XI | `xi fx fy cx cy yaw pitch roll  tx ty tz  d0 d1 d2 d3 d4  gridW gridH type`, then one number | 54, 56 |
 
 Guesses: *radius* is the image circle (1482 px in a 3040 square); POLY's `c0 = 1.0` and three
-small coefficients look like a radial polynomial over the angle; XI (`xi` 1.73 / 1.50, `fx`
-2323 / 3758) looks like the unified omnidirectional camera model (Mei; OpenCV `omnidir`) with
-`k1 k2 p1 p2` + one more. Angles are degrees; lens 0 of the X2 has roll ≈ −179°, the A1's lenses
-have roll ≈ 89° and yaw ≈ 180°: the sensors are mounted differently, so axis conventions must
-come from the numbers, not be assumed.
+small coefficients look like a radial polynomial over the angle. Angles are degrees.
+
+**XI, measured on the A1 sample** (stage 1, `SampleRenderTest`): it is the unified
+omnidirectional model (Mei; OpenCV `omnidir`) with distortion **`k1 k2 k3 p1 p2`** in that order,
+in calibration-grid pixels:
+`m = (x, y) / (z + xi)`, `m · (1 + k1 r² + k2 r⁴ + k3 r⁶)` plus tangential `p1 p2`, then
+`fx · m + cx`. The image circle (BASIC radius) is reached at about **97° from the axis**: each
+lens sees ~194°, so the two overlap by a few degrees around the seam.
+
+**Rotation, measured on the A1 sample:** world → lens i = `Rz(roll) · Ry(−yaw) · Rx(pitch) · B`
+with the XI string's angles, `B` = identity for lens 0 and a 180° turn about x for lens 1
+(axes: x right, y down, z forward). Every reading of the angles was tried; this one lines the
+seam up (brightness correlation 0.76 across the overlap) **and** gives a level world: the
+ground-facing lens points along +y (down), the sky lens up, the horizon is level. On the ONE X2
+sample this world is the camera body's, not level (the camera was held tilted); levelling is
+stage 4's job. BASIC uses a different angle convention (A1: yaw 180, roll 89 where XI says
+pitch 90, roll −90), not worked out since XI is present on both cameras.
 
 ### Gyro + accelerometer (0x300)
 

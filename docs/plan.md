@@ -88,14 +88,22 @@ pace (× real time). **Copy** puts the report on the clipboard, to paste into a 
 cameras, is in hand. That decides whether stage 2 needs the proxy fallback. Pixel 8: done for
 both cameras (above); a slower phone and the X2's lens pair are still to test.
 
-### 1. One reframed frame
+### 1. One reframed frame (built; to check on the phone)
 
 Decode one frame of each lens at a chosen time, render the flat view to a bitmap, show it. Sliders
-for view yaw, pitch and field of view, plus debug sliders for the lens model (field of view of
-the fisheye, small per-lens rotation tweaks) to line the seam up by eye. Start with the BASIC
-calibration (radius, centre, rotation) and an equidistant fisheye model.
+for view yaw, pitch, roll and field of view, a **Sphere** view of the whole panorama, plus debug
+sliders for small lens-1 rotation tweaks and the blend width, and a **seam match** number (how
+well the lenses agree in their overlap) to line the seam up by number rather than by eye.
+
+How it turned out: the camera's own **XI calibration** works from the start, so stage 1 skipped
+the equidistant guess and uses the real lens model (stage 3's main step). The axis conventions
+were found on the PC by trying every reading of the angles on the A1 frames (details in
+[insv-format.md](insv-format.md)); the A1 renders level with no visible seam on distant scenery.
+The maths is plain Kotlin (`view/`), tested on the PC with real frames (`SampleRenderTest`), and
+becomes the GL shader in stage 2. On the phone it renders on the CPU: preview only.
 
 *Done when:* distant scenery (horizon, landing field) shows no visible seam on both samples.
+A1: done on the PC, phone to confirm. ONE X2: needs the `_10_` file.
 
 ### 2. Export a fixed view
 
@@ -106,8 +114,9 @@ to `Movies/insvMagik/<clip>.mp4`. Then the speed is known for real on each phone
 
 ### 3. The real lens model
 
-Use the full calibration instead of tuned guesses: try the XI shape first (it looks like a
-standard model with known maths), then POLY; keep whichever lines the seam up best, per camera.
+Mostly done in stage 1: the XI shape is the standard omnidirectional model and lines the A1's
+seam up. Left: check the ONE X2 pair, decide whether the small lens-1 translation in POLY/XI
+(parallax of close objects) is worth using, and whether POLY ever beats XI.
 
 *Done when:* close objects (a hand, the selfie stick's surroundings, the paraglider's lines)
 cross the seam with only a small step.
@@ -136,7 +145,9 @@ the `.lrv` fallback, more cameras (X3, X4, X5) as samples arrive.
 2. **Frame ↔ exposure entry:** which of the longer exposure list is frame 0 (X2: 130 entries for
    115 frames; A1: 287 for 269).
 3. **The ONE X2's `_10_` file:** does it carry its own trailer, or only `_00_`? Needs the pair.
-4. **Lens model meaning:** what the POLY and XI numbers are exactly, and which the Insta360 app uses.
+4. **Lens model meaning:** XI is answered (omnidirectional model, `k1 k2 k3 p1 p2`, rotation
+   convention found; insv-format.md). POLY and the BASIC angle convention are still unknown;
+   not needed while every camera writes XI.
 5. **The A1's `text` track and its extra records:** telemetry, GPS? Possibly useful for "follow".
 6. **Getting `.insv` onto the phone:** the Insta360 app keeps its downloads to itself (probably);
    USB mass-storage mode of the camera, a card reader on USB-C, or copying through a PC work. To

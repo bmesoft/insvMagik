@@ -159,7 +159,8 @@ object ProbeReport {
         !best.sizeOk -> "Verdict: no decoder here takes ${s.width}x${s.height}; full quality won't work on this phone (proxy .lrv only)."
         best.maxInstances < streams -> "Verdict: the decoder allows only ${best.maxInstances} at once, $streams needed."
         best.perfOk == false || (best.perfOk == null && !best.rateOk) ->
-            "Verdict: size OK, but declared speed is below $streams stream(s) in real time; expect a slower export. Run the speed test."
+            "Verdict: size OK; the declared speed is below $streams stream(s) in real time, but declared ratings are often " +
+                "conservative (Pixel 8: declared no, measured 1.38x). Run the speed test and trust it."
         else -> "Verdict: should decode in real time or faster; confirm with the speed test."
     }
 

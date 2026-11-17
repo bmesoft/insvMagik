@@ -52,6 +52,19 @@ guessed: stage 0 asks the phone's decoders and runs a real decode test.
 | A1 8K | 2 × 3840² × 30 = 0.88 G | close to 8K at 30 fps | flagships with 8K decoding |
 | 4K-class modes / `.lrv` proxies | much less | 1080p–4K at 30 fps | nearly every phone |
 
+**Measured** (stage 0 decode test, all streams decoded together into GPU surfaces):
+
+| Phone | Clip | Streams | Per stream | Pace | Decoder |
+|---|---|---|---|---|---|
+| Pixel 8 (Tensor G3, Android 17) | A1 8K, 2 × 3840² | 2 | 41.7 fps | **1.38×** real time | `c2.exynos.h264.decoder` |
+| Pixel 8 | ONE X2 5.7K, 2880² | 1 (lens 0 only; `_10_` not in hand) | 68.3 fps | **2.26×** | same |
+
+The Pixel 8's decoder sustains about 1.2 Gpx/s, so both X2 lenses together should still be about
+2× real time (estimate until the pair is tested). Its **declared** performance points said "no"
+for the A1's two streams, yet they run 1.38× real time: declared ratings are conservative for
+parallel streams, so the speed test decides, not the declared numbers. Still missing: a slower
+phone.
+
 Export doesn't have to keep up with real time: a phone that decodes at half speed takes 2 minutes
 per minute of video. Only a decoder that refuses the size stops it; then the fallback is the
 `.lrv` proxy (much softer). Hardware decoders can't decode at a lower resolution.
@@ -63,7 +76,7 @@ output is the right target; 4K output would only add file size.
 
 Each stage ends with something to try on a phone.
 
-### 0. Probe (done in this first version)
+### 0. Probe (built; measured on a Pixel 8)
 
 Pick the clip's files (the system picker with `*/*`, since Android has no MIME type for `.insv`).
 Report: the phone and its chip; tracks; camera, firmware, calibration, gyro and exposure from the
@@ -72,7 +85,8 @@ a **decode test** that decodes all lens streams together for 10 s into GPU surfa
 pace (× real time). **Copy** puts the report on the clipboard, to paste into a chat or an issue.
 
 *Done when:* the report from your phone and from the slowest phone you want to support, for both
-cameras, is in hand. That decides whether stage 2 needs the proxy fallback.
+cameras, is in hand. That decides whether stage 2 needs the proxy fallback. Pixel 8: done for
+both cameras (above); a slower phone and the X2's lens pair are still to test.
 
 ### 1. One reframed frame
 

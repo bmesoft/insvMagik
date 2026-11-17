@@ -88,7 +88,7 @@ pace (× real time). **Copy** puts the report on the clipboard, to paste into a 
 cameras, is in hand. That decides whether stage 2 needs the proxy fallback. Pixel 8: done for
 both cameras (above); a slower phone and the X2's lens pair are still to test.
 
-### 1. One reframed frame (built; to check on the phone)
+### 1. One reframed frame (done for the A1)
 
 Decode one frame of each lens at a chosen time, render the flat view to a bitmap, show it. Sliders
 for view yaw, pitch, roll and field of view, a **Sphere** view of the whole panorama, plus debug
@@ -103,12 +103,17 @@ The maths is plain Kotlin (`view/`), tested on the PC with real frames (`SampleR
 becomes the GL shader in stage 2. On the phone it renders on the CPU: preview only.
 
 *Done when:* distant scenery (horizon, landing field) shows no visible seam on both samples.
-A1: done on the PC, phone to confirm. ONE X2: needs the `_10_` file.
+A1: done (PC 0.76, Pixel 8 0.78 seam match). ONE X2: needs the `_10_` file.
 
-### 2. Export a fixed view
+### 2. Export a fixed view (built; to test on the phone)
 
 The full pipeline above with one fixed view, a progress bar, cancel, the screen kept on. Output
-to `Movies/insvMagik/<clip>.mp4`. Then the speed is known for real on each phone.
+to `Movies/insvMagik/<clip>_flat.mp4`. Then the speed is known for real on each phone.
+
+Built as `media/Exporter.kt` (decoders, pairing by timestamp, encoder, muxer, audio copy) and
+`media/GlReframer.kt` (EGL + the fragment shader, a port of `view/Reframer`). **Export this view**
+on the Frame tab uses the current yaw, pitch, roll, field of view and lens-1 tweak. Only the
+phone can test it: the GPU path has no unit test (the shader mirrors the tested CPU maths).
 
 *Done when:* a 1-minute clip exports, plays in the gallery and opens in mobiCut; audio in sync.
 

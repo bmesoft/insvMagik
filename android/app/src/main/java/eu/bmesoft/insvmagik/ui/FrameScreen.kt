@@ -21,6 +21,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
@@ -29,6 +30,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
@@ -90,6 +92,24 @@ fun FrameScreen(vm: FrameViewModel) {
         Angle("Pitch", v.pitch, -90f..90f) { vm.setView(v.copy(pitch = it)) }
         Angle("Roll", v.roll, -180f..180f) { vm.setView(v.copy(roll = it)) }
         Angle("Field of view", v.fov, 40f..150f) { vm.setView(v.copy(fov = it)) }
+
+        // Export: the whole clip through this view. Keep the screen on meanwhile.
+        val exporting = s.exportProgress != null
+        val hostView = LocalView.current
+        DisposableEffect(exporting) {
+            hostView.keepScreenOn = exporting
+            onDispose { hostView.keepScreenOn = false }
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+            if (exporting) {
+                OutlinedButton(onClick = vm::cancelExport) { Text("Cancel") }
+                Text("Exporting ${((s.exportProgress ?: 0f) * 100).toInt()} %", style = MaterialTheme.typography.bodySmall)
+            } else {
+                Button(onClick = vm::export, enabled = s.busy == null && s.bitmap != null) { Text("Export this view (1080p)") }
+            }
+        }
+        s.exportProgress?.let { LinearProgressIndicator(progress = { it }, modifier = Modifier.fillMaxWidth().padding(top = 4.dp)) }
+        s.exportResult?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
 
         Spacer(Modifier.height(8.dp))
         Text("Seam (debug)", style = MaterialTheme.typography.titleSmall)

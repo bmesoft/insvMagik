@@ -4,8 +4,9 @@ An Android tool that turns 360° recordings from Insta360 cameras (`.insv`) into
 **reframed MP4** videos right on the phone: pick the clip's files, choose where to look, export
 to the gallery (and edit further in mobiCut). No Insta360 app, no PC.
 
-**Status:** stage 1 of the [plan](docs/plan.md): a probe that reads the files and measures whether
-the phone can decode them, and a Frame tab that shows a reframed view of one frame. Internal APK
+**Status:** stage 2 of the [plan](docs/plan.md): a probe that reads the files and measures whether
+the phone can decode them, and a Frame tab that shows a reframed view of one frame and exports
+the whole clip through it as a 1080p MP4. Internal APK
 only; this repo is private for now and may go public if the converter works out.
 
 Part of bmesoft; the repos sit side by side:
@@ -45,7 +46,8 @@ Same Gradle plugin versions as mobiCut.
 In the app, **Probe** tab: **Choose files** (both `…_00_…` and `…_10_…` of a clip, or the single
 file of newer cameras), read the report, **Decode test**, **Copy** and paste the report where it's
 needed. **Frame** tab: the middle of the clip as a flat view; the time slider picks another frame,
-the sliders look around, **Sphere** shows the whole panorama, **Copy** gives the settings.
+the sliders look around, **Sphere** shows the whole panorama, **Export this view (1080p)** writes
+the clip to `Movies/insvMagik`, **Copy** gives the settings and the export result.
 
 The `.insv` must be on the phone first: USB mass-storage mode of the camera or a card reader
 (see the plan's open questions).

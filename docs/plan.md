@@ -59,6 +59,7 @@ guessed: stage 0 asks the phone's decoders and runs a real decode test.
 |---|---|---|---|---|---|
 | Pixel 8 (Tensor G3, Android 17) | A1 8K, 2 × 3840² | 2 | 41.7 fps | **1.38×** real time | `c2.exynos.h264.decoder` |
 | Pixel 8 | ONE X2 5.7K, 2880² | 1 (lens 0 only; `_10_` not in hand) | 68.3 fps | **2.26×** | same |
+| Pixel 8 | X5 8K, 2 × 3840² **HEVC**, 25 fps | 2 | 30.0 fps | **1.19×** | `c2.exynos.hevc.decoder` (declared "no" again) |
 
 The Pixel 8's decoder sustains about 1.2 Gpx/s, so both X2 lenses together should still be about
 2× real time (estimate until the pair is tested). Its **declared** performance points said "no"

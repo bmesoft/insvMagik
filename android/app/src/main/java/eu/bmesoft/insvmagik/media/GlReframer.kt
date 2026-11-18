@@ -132,7 +132,7 @@ class GlReframer(output: Surface, private val width: Int, private val height: In
             GLES20.glUniform2f(loc("uSize$i"), w.toFloat(), h.toFloat())
         }
         GLES20.glUniform2f(loc("uOut"), width.toFloat(), height.toFloat())
-        GLES20.glUniform1f(loc("uFocal"), (width / 2.0 / tan(Math.toRadians(view.fov.coerceIn(1.0, 179.0)) / 2)).toFloat())
+        GLES20.glUniform1f(loc("uFocal"), (max(width, height) / 2.0 / tan(Math.toRadians(view.fov.coerceIn(1.0, 179.0)) / 2)).toFloat())
         GLES20.glUniform1f(loc("uBlend"), Math.toRadians(max(view.blendDeg, 0.01)).toFloat())
         val pos = GLES20.glGetAttribLocation(program, "aPos")
         GLES20.glEnableVertexAttribArray(pos)

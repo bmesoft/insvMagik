@@ -64,7 +64,7 @@ data class ViewParams(
     val yaw: Double = 0.0,
     val pitch: Double = 0.0,
     val roll: Double = 0.0,
-    /** Horizontal field of view of the flat output. */
+    /** Field of view of the flat output along its longer side, degrees. */
     val fov: Double = 100.0,
     val projection: Projection = Projection.FLAT,
     /** Width of the cross-fade between lenses where both see the same spot. */
@@ -97,7 +97,8 @@ object Reframer {
     ): IntArray {
         val toLens = rig.lenses.map { it.toLens * motion * view.rotation() }
         val blend = Math.toRadians(max(view.blendDeg, 0.01))
-        val focal = width / 2.0 / tan(Math.toRadians(view.fov.coerceIn(1.0, 179.0)) / 2)
+        // The field of view spans the longer side (the same framing in landscape and portrait).
+        val focal = max(width, height) / 2.0 / tan(Math.toRadians(view.fov.coerceIn(1.0, 179.0)) / 2)
         IntStream.range(0, height).parallel().forEach { py ->
             val dir = DoubleArray(3)
             val d = DoubleArray(3)

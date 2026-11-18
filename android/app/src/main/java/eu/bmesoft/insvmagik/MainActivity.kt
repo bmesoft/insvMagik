@@ -39,8 +39,8 @@ class MainActivity : ComponentActivity() {
                     val probed by probe.state.collectAsStateWithLifecycle()
                     Column(Modifier.safeDrawingPadding()) {
                         TabRow(selectedTabIndex = tab) {
-                            Tab(tab == 0, { tab = 0 }, text = { Text("Probe") })
-                            Tab(tab == 1, { tab = 1 }, text = { Text("Frame") })
+                            Tab(tab == 0, { tab = 0 }, text = { Text("Files") })
+                            Tab(tab == 1, { tab = 1 }, text = { Text("View & export") })
                         }
                         when (tab) {
                             0 -> ProbeScreen(probe)

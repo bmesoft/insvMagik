@@ -117,6 +117,39 @@ class SampleMotionTest {
         }
     }
 
+    /**
+     * The sun's height above the levelled horizon over the X5 clip. It hardly moves in 24 s, so
+     * any wobble is a levelling error (along the sun's direction; where the clip was shot isn't
+     * known, so its true height isn't either). The forward filter keeps it within ~2.3° (RMS);
+     * a two-sided long-window gravity estimate drifted 18° → 38° (the X5's gyro offset, never
+     * measurable on a moving bike, piles up), and field 31 taken as that offset made it worse.
+     */
+    @Test fun x5SunHeight() {
+        val insv = samples?.let { File(it, "1745586212-vid_20250416_143628_00_005.insv") }
+        val l0 = frames?.let { File(it, "x5_seq256_lens0.rgb") }
+        val l1 = frames?.let { File(it, "x5_seq256_lens1.rgb") }
+        assumeTrue("samples not set", insv?.isFile == true && l0?.isFile == true && l1?.isFile == true)
+        val (info, imu) = read(insv!!)
+        val rig = CameraRig.from(info.calibrations.mapNotNull { LensCalibration.parse(it.second) }, 256)!!
+        val seq0 = loadSeq(l0!!, 256)
+        val seq1 = loadSeq(l1!!, 256)
+        val att = Attitude.estimate(ImuTrack.from(imu, info, SensorAxes.forModel(info.model)!!)!!)
+        val heights = seq0.indices.mapNotNull { k ->
+            val s = sunDirection(rig, seq0[k], seq1[k]) ?: return@mapNotNull null
+            val w = DoubleArray(3)
+            att.at(k * 40_000L).rotate(s[0], s[1], s[2], w)
+            k to Math.toDegrees(kotlin.math.asin(-w[1].coerceIn(-1.0, 1.0)))
+        }
+        val hs = heights.map { it.second }
+        val mean = hs.average()
+        val sd = kotlin.math.sqrt(hs.sumOf { (it - mean) * (it - mean) } / hs.size)
+        println("X5 sun height: mean %.1f°, spread %.1f°, range %.1f..%.1f; per 2 s: %s".format(
+            mean, sd, hs.min(), hs.max(),
+            heights.groupBy { it.first / 50 }.entries.joinToString { (b, v) -> "${b * 2}s %.1f".format(v.map { it.second }.average()) },
+        ))
+        assertTrue("sun height spread $sd°", sd < 4.0)
+    }
+
     /** Where the sun is in the body's axes: the middle of the biggest saturated blob, or null. */
     private fun sunDirection(rig: Rig, a: LensImage, b: LensImage): DoubleArray? {
         val w = 512

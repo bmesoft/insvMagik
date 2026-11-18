@@ -2,7 +2,7 @@
 
 An Android tool that turns 360° recordings from Insta360 cameras (`.insv`) into normal, flat
 **reframed MP4** videos right on the phone: pick the clip's files, choose where to look, export
-to the gallery (and edit further in mobiCut). No Insta360 app, no PC.
+to the gallery, ready for any video editor. No Insta360 app, no PC.
 
 **Status:** stage 5 of the [plan](docs/plan.md): a probe that reads the files and measures whether
 the phone can decode them, and a view tab that shows a reframed frame and exports the whole clip
@@ -14,16 +14,6 @@ reports welcome.
 (the latest release, Android 10+). How to install it, get clips onto the phone and use the app:
 the [tester guide](docs/tester-guide.md). Reports and feedback: **office@bmesoft.eu** (the app's
 **Email report** button fills it in).
-
-Part of bmesoft; the repos sit side by side:
-
-```
-bmesoft/
-  mobicut/      Android video editor (bmesoft/mobicut)
-  insvMagik/    this repo (bmesoft/insvMagik)
-  www/          bmesoft.eu
-  tools/        local tools portal
-```
 
 ## Layout
 
@@ -43,7 +33,7 @@ bmesoft/
 | [tools/insv-probe.py](tools/insv-probe.py) | the same file analysis on the PC (Python, standard library) |
 
 Kotlin, Jetpack Compose, `MediaExtractor` / `MediaCodec`. minSdk 29 (Android 10), targetSdk 36.
-Same Gradle plugin versions as mobiCut.
+
 
 ## Build and try
 

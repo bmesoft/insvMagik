@@ -3,8 +3,8 @@
 An Android tool that converts Insta360 `.insv` 360° clips into reframed flat MP4s on the phone.
 Read [README.md](README.md), [docs/plan.md](docs/plan.md) (stages, what's next) and
 [docs/insv-format.md](docs/insv-format.md) first. Replies in English. Repo `bmesoft/insvMagik`,
-**public**, licensed AGPL-3.0 ([LICENSE](LICENSE)). Sibling repos next to this one: `../mobicut`
-(the video editor; same Gradle setup, its code may be borrowed), `../www`, `../tools`.
+**public**, licensed AGPL-3.0 ([LICENSE](LICENSE)): nothing in it may mention or point to private
+repos, products' internals or local paths.
 
 ## How we work
 

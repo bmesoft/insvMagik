@@ -1,9 +1,8 @@
 # Plan: .insv → reframed MP4 on the phone
 
 **Goal:** an Android app (public, AGPL-3.0, APK from the GitHub releases). Pick the `.insv` file(s) of one 360° clip, choose where to look,
-export a normal flat **1080p MP4** to the gallery, ready for mobiCut. No Insta360 app, no PC.
-Public since stage 5, with testers. If it proves itself, the converter may move into
-mobiCut.
+export a normal flat **1080p MP4** to the gallery, ready for any video editor. No Insta360 app, no PC.
+Public since stage 5, with testers.
 
 **Not the goal:** Insta360-app quality (optical-flow stitching, colour matching between lenses),
 360° output, photos (`.insp`), log/HDR colour, timelapse, bullet time.
@@ -35,11 +34,10 @@ flowchart LR
   each lens's edge. About 2 million pixels per frame: cheap on any GPU.
 - **Encode:** `MediaCodec` H.264 at 1920×1080 (or 1080×1920), ~16 Mbit/s, the source frame rate;
   the source timestamps go through unchanged. Audio samples are copied as they are.
-- **Why not Media3 Transformer** (mobiCut's exporter): it handles one input stream per sequence;
+- **Why not Media3 Transformer:** it handles one input stream per sequence;
   combining two decoded streams into one frame needs its experimental multi-input compositor.
-  A direct `MediaCodec` + GL pipeline is a few hundred lines and fully under our control. The
-  shader could later become a mobiCut `GlEffect`.
-- **Structure:** like mobiCut but smaller: `insv/` (file format, pure Kotlin, unit-tested on the
+  A direct `MediaCodec` + GL pipeline is a few hundred lines and fully under our control.
+- **Structure:** `insv/` (file format, pure Kotlin, unit-tested on the
   PC), `media/` (decode, render, encode), `ui/` (Compose), one activity.
 
 ## Will it run on slower phones?
@@ -117,7 +115,7 @@ Built as `media/Exporter.kt` (decoders, pairing by timestamp, encoder, muxer, au
 on the Frame tab uses the current yaw, pitch, roll, field of view and lens-1 tweak. Only the
 phone can test it: the GPU path has no unit test (the shader mirrors the tested CPU maths).
 
-*Done when:* a 1-minute clip exports, plays in the gallery and opens in mobiCut; audio in sync.
+*Done when:* a 1-minute clip exports, plays in the gallery and opens in a video editor; audio in sync.
 Done on the Pixel 8 with both samples: every source frame in the output, the source duration,
 the X2's audio copied and starting with the video.
 

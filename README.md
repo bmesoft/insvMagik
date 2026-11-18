@@ -12,8 +12,9 @@ reports welcome.
 
 **Download:** [insvMagik.apk](https://github.com/bmesoft/insvMagik/releases/latest/download/insvMagik.apk)
 (the latest release, Android 10+). How to install it, get clips onto the phone and use the app:
-the [tester guide](docs/tester-guide.md). Reports and feedback: **office@bmesoft.eu** (the app's
-**Email report** button fills it in).
+the [tester guide](docs/tester-guide.md). Reports and feedback: a
+[GitHub issue](https://github.com/bmesoft/insvMagik/issues) (the app's **Report on GitHub** button
+fills one in).
 
 ## Layout
 
@@ -82,7 +83,8 @@ same key, or phones refuse the update.
 
 [GNU Affero General Public License v3.0](LICENSE) (AGPL-3.0). Use, study, change and share it
 freely; anyone who distributes a changed version, or offers it to users over a network, must
-publish their source code under the same licence. For other terms, write to office@bmesoft.eu.
+publish their source code under the same licence. For other terms, ask in an
+[issue](https://github.com/bmesoft/insvMagik/issues).
 
 The app icon's letters are outlines of Nunito ExtraBold (© 2014 The Nunito Project Authors,
 SIL Open Font License 1.1). The `.insv` format notes draw on

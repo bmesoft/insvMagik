@@ -48,6 +48,8 @@ class MotionAndFilesTest {
         // A phone browser's download adds a copy number and an extension.
         assertEquals(ClipFiles.Name("20220625_140410_008", 1, false), ClipFiles.parse("VID_20220625_140410_10_008.insv.3gpp"))
         assertEquals(ClipFiles.Name("20220625_140410_008", 1, false), ClipFiles.parse("VID_20220625_140410_10_008.insv (1).3gpp"))
+        // A share or upload may put something in front.
+        assertEquals(ClipFiles.Name("20250416_143628_005", 0, false), ClipFiles.parse("1745586212-vid_20250416_143628_00_005.insv"))
         assertNull(ClipFiles.parse("holiday.mp4"))
     }
 
@@ -55,6 +57,8 @@ class MotionAndFilesTest {
         assertEquals(emptyList<String>(), ClipFiles.check(listOf("VID_20231126_111301_00_004.insv", "VID_20231126_111301_10_004.insv")))
         assertEquals(emptyList<String>(), ClipFiles.check(listOf("VID_20261109_174428_032.insv")))
         assertTrue(ClipFiles.check(listOf("VID_20231126_111301_00_004.insv")).single().contains("_10_"))
+        // The X5 keeps _00_ in the name of a file that holds both lenses.
+        assertEquals(emptyList<String>(), ClipFiles.check(listOf("VID_20250416_143628_00_005.insv"), setOf("VID_20250416_143628_00_005.insv")))
         assertTrue(ClipFiles.check(listOf("VID_20231126_111301_00_004.insv", "VID_20261109_174428_032.insv")).any { "different clips" in it })
     }
 }

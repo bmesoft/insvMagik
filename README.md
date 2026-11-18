@@ -7,7 +7,7 @@ to the gallery (and edit further in mobiCut). No Insta360 app, no PC.
 **Status:** stage 4 of the [plan](docs/plan.md): a probe that reads the files and measures whether
 the phone can decode them, and a Frame tab that shows a reframed view of one frame and exports
 the whole clip through it as a 1080p MP4, stabilised by the camera's gyro with a level horizon
-(ONE X2 and Antigravity A1 so far). Internal APK only; this repo is private for now and may go public if the converter works out.
+(ONE X2, Antigravity A1 and X5 so far). Internal APK only; this repo is private for now and may go public if the converter works out.
 
 Part of bmesoft; the repos sit side by side:
 

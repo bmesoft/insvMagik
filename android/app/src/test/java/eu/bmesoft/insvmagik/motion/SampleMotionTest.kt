@@ -34,6 +34,13 @@ import kotlin.math.hypot
  *
  * Antigravity A1: its sample sits still, so only gravity checks it (and INSV_RENDER gets the
  * levelled sphere to look at).
+ *
+ * Insta360 X5 (a motorbike ride under a clear sky): the sun is a fixed point at infinity, so with
+ * the right axes it stays put in a locked world. Finds the sun in every frame in the body's axes,
+ * then for each of the 24 turns how far it wanders once stabilised. Needs every frame of both
+ * lenses at 256² in INSV_FRAMES:
+ *
+ *   ffmpeg -i 1745586212-vid_20250416_143628_00_005.insv -map 0:v:0 -vf scale=256:256 -f rawvideo -pix_fmt rgb24 x5_seq256_lens0.rgb -map 0:v:1 -vf scale=256:256 -f rawvideo -pix_fmt rgb24 x5_seq256_lens1.rgb
  */
 class SampleMotionTest {
     private val samples = System.getenv("INSV_SAMPLES")?.let(::File)
@@ -68,6 +75,110 @@ class SampleMotionTest {
             val view = ViewParams(projection = ViewParams.Projection.SPHERE)
             save(File(out, "x2_follow_$k.ppm"), 1024, 512, Reframer.render(rig, listOf(imgs[k], null), view, 1024, 512, motion = stab.correction(k * step, Stabilize.FOLLOW)))
         }
+    }
+
+    @Test fun x5Axes() {
+        val insv = samples?.let { File(it, "1745586212-vid_20250416_143628_00_005.insv") }
+        val l0 = frames?.let { File(it, "x5_seq256_lens0.rgb") }
+        val l1 = frames?.let { File(it, "x5_seq256_lens1.rgb") }
+        assumeTrue("samples not set", insv?.isFile == true && l0?.isFile == true && l1?.isFile == true)
+        val (info, imu) = read(insv!!)
+        val rig = CameraRig.from(info.calibrations.mapNotNull { LensCalibration.parse(it.second) }, 256)!!
+        val seq0 = loadSeq(l0!!, 256)
+        val seq1 = loadSeq(l1!!, 256)
+        val step = 40_000L
+        val sun = seq0.indices.map { k -> sunDirection(rig, seq0[k], seq1[k]) }
+        val found = sun.count { it != null }
+        println("X5: sun found in $found of ${sun.size} frames")
+        assumeTrue(found > sun.size / 2)
+
+        val results = turns().map { m ->
+            val att = Attitude.estimate(ImuTrack.from(imu, info, m)!!)
+            m to sunSpread(att, sun, step)
+        }.sortedBy { it.second }
+        println("X5 sun spread (degrees): no stabilisation %.1f; best turns: %s".format(
+            sunSpread(null, sun, step), results.take(4).joinToString { (m, s) -> "%.1f %s".format(s, m) },
+        ))
+        SensorAxes.forModel(info.model)?.let { known ->
+            assertEquals(known.toString(), results.first().first.toString())
+            val att = Attitude.estimate(ImuTrack.from(imu, info, known)!!)
+            val shifts = (-20..20 step 5).associateWith { sunSpread(att, sun, step, it * 1000L) }
+            println("X5 clock shifts (ms → spread): " + shifts.entries.joinToString { "%+d %.2f".format(it.key, it.value) })
+        }
+
+        // To look at: the levelled sphere at a few moments for the two best turns.
+        val out = System.getenv("INSV_RENDER")?.let(::File) ?: return
+        for ((rank, pair) in results.take(2).withIndex()) {
+            val stab = Stabilizer(Attitude.estimate(ImuTrack.from(imu, info, pair.first)!!))
+            for (k in listOf(0, 120, 240, 360, 480, 600)) {
+                val view = ViewParams(projection = ViewParams.Projection.SPHERE)
+                save(File(out, "x5_r${rank}_$k.ppm"), 512, 256, Reframer.render(rig, listOf(seq0[k], seq1[k]), view, 512, 256, motion = stab.correction(k * step, Stabilize.FOLLOW)))
+            }
+        }
+    }
+
+    /** Where the sun is in the body's axes: the middle of the biggest saturated blob, or null. */
+    private fun sunDirection(rig: Rig, a: LensImage, b: LensImage): DoubleArray? {
+        val w = 512
+        val h = 256
+        val px = Reframer.render(rig, listOf(a, b), ViewParams(projection = ViewParams.Projection.SPHERE), w, h)
+        val bright = BooleanArray(w * h) { luma(px[it]) >= 250 }
+        val seen = BooleanArray(w * h)
+        var best: List<Int> = emptyList()
+        for (start in bright.indices) {
+            if (!bright[start] || seen[start]) continue
+            val blob = ArrayList<Int>()
+            val stack = ArrayDeque<Int>().apply { add(start) }
+            seen[start] = true
+            while (stack.isNotEmpty()) {
+                val i = stack.removeLast()
+                blob += i
+                val x = i % w
+                val y = i / w
+                for ((nx, ny) in listOf((x + 1) % w to y, (x + w - 1) % w to y, x to y + 1, x to y - 1)) {
+                    if (ny !in 0 until h) continue
+                    val j = ny * w + nx
+                    if (bright[j] && !seen[j]) { seen[j] = true; stack.add(j) }
+                }
+            }
+            if (blob.size > best.size) best = blob
+        }
+        if (best.size < 8 || best.size > 2000) return null
+        val d = DoubleArray(3)
+        for (i in best) {
+            val lon = ((i % w) + 0.5) / w * 2 * Math.PI - Math.PI
+            val lat = ((i / w) + 0.5) / h * Math.PI - Math.PI / 2
+            d[0] += kotlin.math.cos(lat) * kotlin.math.sin(lon)
+            d[1] += kotlin.math.sin(lat)
+            d[2] += kotlin.math.cos(lat) * kotlin.math.cos(lon)
+        }
+        val n = kotlin.math.sqrt(d[0] * d[0] + d[1] * d[1] + d[2] * d[2])
+        return doubleArrayOf(d[0] / n, d[1] / n, d[2] / n)
+    }
+
+    /**
+     * RMS angle (degrees) of the sun around its mean direction in the stabilised world, within
+     * 2-second windows (a slow drift of the locked heading doesn't count), averaged.
+     */
+    private fun sunSpread(att: Attitude?, sun: List<DoubleArray?>, step: Long, shiftUs: Long = 0): Double =
+        sun.indices.chunked(50).map { idx -> spreadOf(att, idx.map { it to sun[it] }, step, shiftUs) }.filter { !it.isNaN() }.average()
+
+    private fun spreadOf(att: Attitude?, sun: List<Pair<Int, DoubleArray?>>, step: Long, shiftUs: Long): Double {
+        val world = sun.mapNotNull { (k, s) ->
+            s ?: return@mapNotNull null
+            val out = DoubleArray(3)
+            (att?.at(k * step + shiftUs) ?: Quat.IDENTITY).rotate(s[0], s[1], s[2], out)
+            out
+        }
+        if (world.size < 10) return Double.NaN
+        val m = DoubleArray(3)
+        world.forEach { for (j in 0..2) m[j] += it[j] }
+        val n = kotlin.math.sqrt(m[0] * m[0] + m[1] * m[1] + m[2] * m[2])
+        val sq = world.sumOf { v ->
+            val c = ((v[0] * m[0] + v[1] * m[1] + v[2] * m[2]) / n).coerceIn(-1.0, 1.0)
+            Math.toDegrees(kotlin.math.acos(c)).let { it * it }
+        }
+        return kotlin.math.sqrt(sq / world.size)
     }
 
     @Test fun a1Level() {

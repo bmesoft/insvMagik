@@ -118,7 +118,7 @@ object ProbeReport {
             f.errors.forEach { line("  ! $it") }
         }
 
-        val notes = ClipFiles.check(files.map { it.name })
+        val notes = ClipFiles.check(files.map { it.name }, files.filter { f -> f.tracks.count { it.isVideo } >= 2 }.map { it.name }.toSet())
         if (notes.isNotEmpty()) {
             line()
             line("Notes")

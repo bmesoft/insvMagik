@@ -9,6 +9,7 @@ Insta360 doesn't document `.insv`. This is what the two samples show, checked wi
 | `VID_20231126_111301_00_004.insv` (43.7 MB, 3.8 s) | Insta360 ONE X2 | v1.0.62_build2 | lens 0 only; lens 1 is in `…_10_004.insv` (not in hand yet) |
 | `VID_20261109_174428_032.insv` (199.8 MB, 9.0 s) | Antigravity A1 (360° drone) | 10.0.397.3_5.5 | both lenses in one file |
 | `VID_20220625_140410_10_008.insv` (356.5 MB, 47 s) | Insta360 ONE RS 1-inch 360 | – | lens 1 only, **no trailer** (below) |
+| `1745586212-vid_20250416_143628_00_005.insv` (608 MB, 24.4 s) | Insta360 X5 | v0.8.50_build1 | both lenses in one file despite `_00_` in the name; a motorbike ride |
 
 Samples stay out of the repo (`.gitignore`): they are big and carry the camera's serial number.
 
@@ -24,8 +25,14 @@ any video, whatever the extension. The Insta360 data block (the *trailer*) follo
 | Audio | AAC stereo 48 kHz | none |
 | Other | – | a `text` track, one sample per frame (content not looked at yet) |
 
+The X5 sample: **2 tracks of HEVC** (`hvc1`), 3840×3840 each, 25 fps, AAC stereo, index-layout
+trailer like the A1's. Track 0 is lens 0 (the seam lines up that way; camera-info field 80, "multi
+track order" in telemetry-parser, is 1 on the X5 and 2 on the A1, both in that order).
+
 File names (Insta360 manuals): `VID_<date>_<time>_00_<seq>.insv` + `…_10_…` are the two lenses
-of one clip (ONE X2, X3); X4 and newer write one `VID_<date>_<time>_<seq>.insv` (the A1 too).
+of one clip (ONE X2, X3); the A1 writes one `VID_<date>_<time>_<seq>.insv`. The X5 writes both
+lenses into one file but keeps `_00_` in its name, so the app goes by the number of video tracks.
+A share or upload may prefix the name (`1745586212-vid_…`, lower case).
 Low-res proxies: `LRV_…` / `.lrv`, with `01` / `11` in the lens slot. A phone browser may save
 a download as `….insv.3gpp` or `….insv (1).3gpp` (extension from the MIME type); the app reads
 those names too.
@@ -82,10 +89,19 @@ values from the samples:
 | 65 | sensor ranges: `{1: ± g, 2: ± °/s}` | – | 32, 2000 |
 | 31 | "gyro calibration": 6 × f64 + u64 | small numbers | small numbers, **not** the A1's resting gyro offset; unused |
 | 60 | 9 × f32, a turn close to 180° about z (not in telemetry-parser) | present | – |
+| 27 | "window crop": `{1, 2: source size, 3, 4: kept size, 5, 6: offset}` | 3040 → 2880 | 5248, no crop (X5: 5376 → 5312) |
 | 69, 91 | 4 floats / 4 doubles, unit quaternions (not in telemetry-parser) | – | present |
 
 Fields 60, 69 and 91 look like sensor or attitude turns; none was needed (field 60 on top of
 the measured X2 axes doesn't stabilise better).
+
+**Field 27 doesn't apply to the XI calibration** (measured). telemetry-parser crops each grid
+square to the kept size around its centre before scaling to the video. With the XI string that
+is worse on both cameras that crop: on the X5 the seam's distant sectors match at 0.85 / 0.87 /
+0.81 (three moments) when the whole grid square is scaled to the video, and 0.74 / 0.80 / 0.71
+with the centred crop (0.78 / 0.85 / 0.75 cropped from the corner); on the ONE X2 the
+stabilised background moves more with the crop (3.23 vs 2.64). So the app scales the whole
+square, as before.
 
 ### Lens calibration ("offset")
 
@@ -143,6 +159,10 @@ both samples.
 |---|---|---|---|---|
 | ONE X2 | sensor x | sensor z | −sensor y | from the video: of all 24 axis-to-axis turns, this one stabilises the background best (frame-to-frame change 2.64 vs 5.27 unstabilised and 3.49 for the next best) |
 | Antigravity A1 | −sensor z | −sensor y | −sensor x | from gravity: the only turn of the four that put the sensor's up (its +y) up which levels the horizon and stands the walls upright; gyro assumed on the accelerometer's axes (the sample doesn't move) |
+| Insta360 X5 | sensor x | −sensor z | sensor y | from the sun on a motorbike ride: in a locked world the sun stays within 1.9° (RMS over 2 s windows) vs 6.0° unstabilised and 3.0° for the next best turn, which turns the world on its side once levelled |
+
+The X5's clock fields work the same as the A1's (raw 16-bit gyro, µs; field 24 matches exposure
+entry 5 to 15 µs); its sun test can't tell ±20 ms apart, the X2's clip can (0 ± 5 ms).
 
 **Resting gyro offset:** the A1 at rest reads (−0.0043, 0.0019, −0.0003) rad/s in its own axes,
 ~0.25 °/s; field 31 doesn't match it, so the app measures it from the still moments of the clip.

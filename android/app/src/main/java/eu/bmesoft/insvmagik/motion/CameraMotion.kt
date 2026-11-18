@@ -57,16 +57,19 @@ class ImuTrack(val timesUs: LongArray, val accel: Array<DoubleArray>, val gyro: 
  * How each camera's motion sensor sits in the rig's body axes (body = this · sensor). Measured on
  * the samples (docs/insv-format.md, "Motion"): the ONE X2 by stabilising its clip with all 24
  * axis-to-axis turns and keeping the one that holds the background stillest (`SampleMotionTest`);
- * the A1 by gravity alone (its sample sits still on a table): the turn that levels the horizon.
+ * the A1 by gravity alone (its sample sits still on a table): the turn that levels the horizon;
+ * the X5 by the sun on a motorbike ride: the turn that keeps it fixed in a locked world.
  */
 object SensorAxes {
     private val ONE_X2 = Mat3(doubleArrayOf(1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, -1.0, 0.0))
     private val A1 = Mat3(doubleArrayOf(0.0, 0.0, -1.0, 0.0, -1.0, 0.0, -1.0, 0.0, 0.0))
+    private val X5 = Mat3(doubleArrayOf(1.0, 0.0, 0.0, 0.0, 0.0, -1.0, 0.0, 1.0, 0.0))
 
     /** Null for a camera whose axes aren't known yet. */
     fun forModel(model: String?): Mat3? = when (model) {
         "Insta360 ONE X2" -> ONE_X2
         "Antigravity A1" -> A1
+        "Insta360 X5" -> X5
         else -> null
     }
 }

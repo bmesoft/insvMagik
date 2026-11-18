@@ -9,7 +9,8 @@ mobiCut.
 360° output, photos (`.insp`), log/HDR colour, timelapse, bullet time.
 
 Format details: [insv-format.md](insv-format.md). Sample cameras: Insta360 ONE X2 (two files per
-clip, 2 × 2880² H.264) and Antigravity A1 drone (one file, 2 × 3840² H.264).
+clip, 2 × 2880² H.264), Antigravity A1 drone (one file, 2 × 3840² H.264) and Insta360 X5 (one
+file, 2 × 3840² HEVC).
 
 ## How the converter works
 
@@ -146,7 +147,9 @@ How it turned out (details in [insv-format.md](insv-format.md), "Motion"):
   holds the background stillest (half the frame-to-frame change of no stabilisation; the next
   best turn is clearly worse). A1: its sample doesn't move, so only gravity tells: the turn that
   levels the horizon (the drone sits ~10° tilted on the table, so the calibration's own "world"
-  is the drone body, not level). The A1's gyro axes are assumed to be the accelerometer's.
+  is the drone body, not level). The A1's gyro axes are assumed to be the accelerometer's. X5:
+  from a motorbike ride, the turn that keeps the sun fixed in a locked world (and levels the
+  horizon through the curves).
 - **Resting gyro offset:** measured from every still half second (the A1 drifts ~0.25 °/s
   otherwise); a handheld clip that never rests keeps it.
 - Built as `motion/` (pure Kotlin, unit-tested; `SampleMotionTest` checks the X2 axes and clock
@@ -158,7 +161,9 @@ How it turned out (details in [insv-format.md](insv-format.md), "Motion"):
   drifts slowly (no compass), Follow doesn't care.
 
 *Done when:* a walking or flying clip looks steady with a level horizon in both modes. Needs a
-moving A1 clip (to confirm its gyro axes) and a longer walking clip.
+moving A1 clip (to confirm its gyro axes) and a longer walking clip. A leaning motorbike is the
+hard case for the horizon: in a long curve the accelerometer reads the bike's own "down", so the
+filter trusts it less the further it is from 1 g.
 
 ### 5. Moving the view (later)
 

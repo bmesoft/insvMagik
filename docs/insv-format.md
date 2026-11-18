@@ -166,6 +166,15 @@ entry 5 to 15 µs); its sun test can't tell ±20 ms apart, the X2's clip can (0 
 
 **Resting gyro offset:** the A1 at rest reads (−0.0043, 0.0019, −0.0003) rad/s in its own axes,
 ~0.25 °/s; field 31 doesn't match it, so the app measures it from the still moments of the clip.
+On the X5 (a motorbike that never stops) the offset can't be measured, and field 31's gyro part
+taken as the offset makes the levelling worse (the sun's height over the clip spreads 3.4°
+instead of 2.3°), so it stays unused there too.
+
+**Levelling, checked with the sun** (X5): the sun's height above the levelled horizon should not
+change in 24 s. With the forward complementary filter (2 s) it stays within 2.3° RMS
+(`SampleMotionTest.x5SunHeight`). An offline two-sided estimate (gyro over ±5 s, gravity averaged
+over the same window) drifted 18° → 38°: without a measured gyro offset, trusting the gyro over
+longer spans is worse than correcting tilt often.
 
 ### Exposure (0x400)
 

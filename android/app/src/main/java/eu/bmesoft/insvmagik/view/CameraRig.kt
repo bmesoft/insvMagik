@@ -6,13 +6,13 @@ import eu.bmesoft.insvmagik.insv.LensCalibration
  * Builds a [Rig] from the camera's own calibration (docs/insv-format.md, "Lens calibration").
  *
  * Found on the Antigravity A1 sample by trying every reading of the angles and keeping the ones
- * where both lenses agree along the seam (`SampleRenderTest`), then picking the one that also gives
- * a level horizon:
+ * where both lenses agree along the seam (`SampleRenderTest`), then picking the one that puts the
+ * ground-facing lens down:
  * - **Lens model:** the XI string is the unified omnidirectional model with distortion
  *   `k1 k2 k3 p1 p2`, in calibration-grid pixels. The image circle ends at the BASIC radius.
  * - **Rotation** (world → lens i) = `Rz(roll) · Ry(−yaw) · Rx(pitch) · B`, with the XI string's
- *   angles, and `B` = identity for lens 0, a 180° turn about x for lens 1. On the A1 this world is
- *   level: y points down, the sky is up.
+ *   angles, and `B` = identity for lens 0, a 180° turn about x for lens 1. This world is the
+ *   camera body (on the A1 y points roughly down); the gyro levels it (`motion/`).
  */
 object CameraRig {
     /** A hand correction for lens 1 on top of the calibration, degrees (the debug sliders). */

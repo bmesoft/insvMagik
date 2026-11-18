@@ -4,12 +4,21 @@ package eu.bmesoft.insvmagik.insv
  * Which picked files belong together. Insta360 names (from the cameras' manuals):
  * - `VID_<date>_<time>_00_<seq>.insv` + `VID_…_10_<seq>.insv`: one clip in two files, one per lens
  *   (ONE X2, X3 at 5.7K). `_01_` / `_11_` are the low-res `.lrv` proxies of the same.
- * - `VID_<date>_<time>_<seq>.insv`: one file with both lenses as two video tracks (X4 and newer,
- *   Antigravity A1).
+ * - `VID_<date>_<time>_<seq>.insv`: one file with both lenses as two video tracks (Antigravity
+ *   A1). The X5 writes both lenses into one file too but keeps `_00_` in the name, so a file's
+ *   video track count decides, not its name.
  */
 object ClipFiles {
-    private val TWO = Regex("""^(VID|LRV)_(\d{8}_\d{6})_(\d)(\d)_(\d{3})\.(insv|lrv)$""", RegexOption.IGNORE_CASE)
-    private val ONE = Regex("""^(VID|LRV)_(\d{8}_\d{6})_(\d{3})\.(insv|lrv)$""", RegexOption.IGNORE_CASE)
+    /**
+     * What a download may add after the real name: a copy number and an extension guessed from
+     * the MIME type (a phone browser saved `VID_…_10_008.insv` as `VID_…_10_008.insv (1).3gpp`).
+     */
+    /** What a share or upload may put in front: `1745586212-vid_…` (seen on an X5 sample). */
+    private const val HEAD = """^(?:.*[- ])?"""
+
+    private const val TAIL = """(?: \(\d+\))?(?:\.[a-z0-9]{1,5})?$"""
+    private val TWO = Regex("""$HEAD(VID|LRV)_(\d{8}_\d{6})_(\d)(\d)_(\d{3})\.(insv|lrv)$TAIL""", RegexOption.IGNORE_CASE)
+    private val ONE = Regex("""$HEAD(VID|LRV)_(\d{8}_\d{6})_(\d{3})\.(insv|lrv)$TAIL""", RegexOption.IGNORE_CASE)
 
     data class Name(val clip: String, val lens: Int?, val proxy: Boolean)
 
@@ -27,10 +36,13 @@ object ClipFiles {
         return null
     }
 
-    /** Notes about the picked set, empty when it's one complete clip. */
-    fun check(fileNames: List<String>): List<String> {
+    /**
+     * Notes about the picked set, empty when it's one complete clip. [bothLenses]: the names of
+     * files that hold both lenses (two video tracks), whatever their name says.
+     */
+    fun check(fileNames: List<String>, bothLenses: Set<String> = emptySet()): List<String> {
         val notes = mutableListOf<String>()
-        val parsed = fileNames.map { it to parse(it) }
+        val parsed = fileNames.map { n -> n to parse(n)?.let { if (n in bothLenses) it.copy(lens = null) else it } }
         parsed.filter { it.second == null }.forEach { notes += "${it.first}: not an Insta360 file name; read anyway." }
         val names = parsed.mapNotNull { it.second }.filter { !it.proxy }
         if (parsed.any { it.second?.proxy == true }) notes += "Low-res proxy (.lrv) picked: fine for testing, but the real export uses the .insv."

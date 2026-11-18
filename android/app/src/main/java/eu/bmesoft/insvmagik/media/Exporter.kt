@@ -11,6 +11,7 @@ import android.net.Uri
 import android.os.SystemClock
 import android.provider.MediaStore
 import android.view.Surface
+import eu.bmesoft.insvmagik.view.Mat3
 import eu.bmesoft.insvmagik.view.Rig
 import eu.bmesoft.insvmagik.view.ViewParams
 import kotlinx.coroutines.asCoroutineDispatcher
@@ -42,17 +43,18 @@ object Exporter {
 
     /**
      * [tracks]: the lens streams, lens 0 first; [rig] in the tracks' full-size pixels.
-     * [onProgress] gets 0..1 from the export thread. Cancelling the coroutine stops the export and
-     * deletes the unfinished file.
+     * [motion] gives, per frame time (µs, video clock), the world → camera body turn of the
+     * stabilisation (identity = none). [onProgress] gets 0..1 from the export thread. Cancelling
+     * the coroutine stops the export and deletes the unfinished file.
      */
     suspend fun export(
         context: Context, tracks: List<Track>, audio: Track?, rig: Rig, view: ViewParams, name: String,
-        settings: Settings = Settings(), onProgress: (Float) -> Unit,
+        settings: Settings = Settings(), motion: (Long) -> Mat3 = { Mat3.IDENTITY }, onProgress: (Float) -> Unit,
     ): Result {
         val executor = Executors.newSingleThreadExecutor { r -> Thread(r, "export") }
         try {
             // EGL is bound to a thread: the whole export runs on this one.
-            return withContext(executor.asCoroutineDispatcher()) { run(context, tracks, audio, rig, view, name, settings, onProgress) }
+            return withContext(executor.asCoroutineDispatcher()) { run(context, tracks, audio, rig, view, name, settings, motion, onProgress) }
         } finally {
             executor.shutdown()
         }
@@ -60,7 +62,7 @@ object Exporter {
 
     private suspend fun run(
         context: Context, tracks: List<Track>, audio: Track?, rig: Rig, view: ViewParams, name: String,
-        settings: Settings, onProgress: (Float) -> Unit,
+        settings: Settings, motion: (Long) -> Mat3, onProgress: (Float) -> Unit,
     ): Result {
         require(tracks.isNotEmpty() && tracks.size <= 2)
         val resolver = context.contentResolver
@@ -193,7 +195,7 @@ object Exporter {
                         stale.forEach { ready[it] = false }
                         continue
                     }
-                    g.draw(rig, view, sizes, present)
+                    g.draw(rig, view, sizes, present, motion(pts[0]))
                     g.swap(pts[0])
                     ready.fill(false)
                     frames++

@@ -23,7 +23,7 @@ repos, products' internals or local paths.
 - **APKs reach people only through releases** (`.github/workflows/release.yml`, signed with the
   release key from the repo secrets; never commit a key, a keystore or its password). Testers
   follow [docs/tester-guide.md](docs/tester-guide.md); keep it in step with the app's buttons.
-  Reports go to office@bmesoft.eu. No Insta360 / Antigravity names or logos in
+  Testers report as GitHub issues (the app's Report on GitHub button). No Insta360 / Antigravity names or logos in
   the app's name or UI beyond saying it reads `.insv`.
 - **Licences:** telemetry-parser (MIT/Apache-2.0) may be ported with attribution; no code from
   GPL projects (Gyroflow app).

@@ -168,7 +168,7 @@ fun FrameScreen(vm: FrameViewModel) {
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
             OutlinedButton(onClick = { clipboard.setText(AnnotatedString(vm.report())) }) { Text("Copy report") }
-            OutlinedButton(onClick = { emailReport(context, "insvMagik report: export", vm.report()) }) { Text("Email report") }
+            OutlinedButton(onClick = { reportIssue(context, "Test report: export", vm.report()) }) { Text("Report on GitHub") }
         }
         s.exportProgress?.let { LinearProgressIndicator(progress = { it }, modifier = Modifier.fillMaxWidth().padding(top = 4.dp)) }
         s.exportResult?.let { Text(it, style = MaterialTheme.typography.bodySmall) }

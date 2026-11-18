@@ -60,7 +60,7 @@ fun ProbeScreen(vm: ProbeViewModel) {
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
             OutlinedButton(onClick = { clipboard.setText(AnnotatedString(state.report)) }) { Text("Copy") }
-            OutlinedButton(onClick = { emailReport(context, "insvMagik report: files and decode test", state.report) }) { Text("Email report") }
+            OutlinedButton(onClick = { reportIssue(context, "Test report: files and decode test", state.report) }) { Text("Report on GitHub") }
         }
         state.busy?.let {
             Spacer(Modifier.height(12.dp))

@@ -8,24 +8,26 @@ import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
 
-/** Where testers send reports (docs/tester-guide.md). */
-const val REPORT_ADDRESS = "office@bmesoft.eu"
+/** Where testers report (docs/tester-guide.md): the project's GitHub issues. */
+const val ISSUES_URL = "https://github.com/bmesoft/insvMagik/issues"
 
 /**
- * Opens an email to [REPORT_ADDRESS] with the report as its text, in the phone's email app; the
- * tester adds a line on what they saw and sends it. Nothing is sent by the app itself. Without an
- * email app the report goes to the clipboard instead, to paste anywhere.
+ * Opens a new GitHub issue in the browser with [title] and the report filled in; the tester adds
+ * what they saw and submits it (a GitHub account is needed). The report also goes to the clipboard
+ * first, in case the form comes up empty (after signing in, say): then it's one paste away.
+ * Nothing is sent by the app itself.
  */
-fun emailReport(context: Context, subject: String, report: String) {
-    val intent = Intent(Intent.ACTION_SENDTO, Uri.parse("mailto:")).apply {
-        putExtra(Intent.EXTRA_EMAIL, arrayOf(REPORT_ADDRESS))
-        putExtra(Intent.EXTRA_SUBJECT, subject)
-        putExtra(Intent.EXTRA_TEXT, "What I saw:\n\n\n---\n$report")
-    }
+fun reportIssue(context: Context, title: String, report: String) {
+    context.getSystemService(ClipboardManager::class.java)?.setPrimaryClip(ClipData.newPlainText("insvMagik report", report))
+    val body = "**What I saw:**\n\n\n\n**Report from the app:**\n\n```text\n$report\n```\n"
+    val url = Uri.parse("$ISSUES_URL/new").buildUpon()
+        .appendQueryParameter("title", title)
+        .appendQueryParameter("body", body)
+        .build()
     try {
-        context.startActivity(intent)
+        context.startActivity(Intent(Intent.ACTION_VIEW, url))
+        Toast.makeText(context, "Report copied too: paste it if the form is empty", Toast.LENGTH_LONG).show()
     } catch (e: ActivityNotFoundException) {
-        context.getSystemService(ClipboardManager::class.java)?.setPrimaryClip(ClipData.newPlainText("insvMagik report", report))
-        Toast.makeText(context, "No email app: the report is copied, send it to $REPORT_ADDRESS", Toast.LENGTH_LONG).show()
+        Toast.makeText(context, "No browser: the report is copied; open $ISSUES_URL to report it", Toast.LENGTH_LONG).show()
     }
 }

@@ -80,7 +80,8 @@ it, and tell us whether it worked.
     - **1.0× or more:** a minute of video takes a minute or less.
     - **Below 1×:** it still works, just slower (0.5× = 2 minutes per minute).
     - **An error, or "size no" on every decoder:** this phone can't open the clip; send the report.
-4. Tap **Email report** to send it to us (or **Copy** to paste it elsewhere).
+4. Tap **Report on GitHub** to send it to us (see [Send us your reports](#send-us-your-reports)),
+   or **Copy** to paste it elsewhere.
 
 Then switch to the **View & export** tab: it shows the middle of the clip after a moment.
 
@@ -138,13 +139,18 @@ Good to know:
 
 ## Send us your reports
 
-Reports go to **[office@bmesoft.eu](mailto:office@bmesoft.eu)**.
+Reports go to the project's **[GitHub issues](https://github.com/bmesoft/insvMagik/issues)**. You
+need a free GitHub account: sign up once at [github.com/signup](https://github.com/signup).
 
-After a decode test or an export, tap **Email report**: your email app opens with the report
-filled in and our address set. Add a line or two on what you saw at the top, and send. (No email
-app? The report is copied instead; paste it into any message to office@bmesoft.eu.) The report
-holds the phone model, the clip's file name, the settings, the keyframes and the export speed; no
-location and no video.
+After a decode test or an export, tap **Report on GitHub**: the browser opens a new issue with the
+report filled in. Write a line or two under **What I saw**, then tap **Create** (or **Submit new
+issue**). If the form comes up empty (after signing in, for example), paste: the app has copied
+the report too. Without the app at hand, open [a new issue](https://github.com/bmesoft/insvMagik/issues/new/choose)
+and pick **Test report**.
+
+Issues are public: anyone can read them. The report holds the phone model, the clip's file name,
+the settings, the keyframes and the export speed; no location and no video. Don't attach clips
+or write anything you'd rather keep private.
 
 Most useful to us:
 

@@ -6,16 +6,21 @@ import kotlin.math.abs
 data class Keyframe(val timeUs: Long, val yaw: Double, val pitch: Double, val roll: Double, val fov: Double)
 
 /**
- * The view over time from a few keyframes (stage 5): fixed before the first and after the last,
- * a smooth move in between. Each of yaw, pitch, roll and field of view follows a monotone cubic
+ * The view over time from a few keyframes (stage 5): the clip starts with the starting view (the
+ * one set without keyframes) unless a keyframe sits at 0 s, moves through each keyframe in turn
+ * and holds the last. Each of yaw, pitch, roll and field of view follows a monotone cubic
  * (Fritsch–Carlson): it eases through the keyframes and never overshoots them, so a pan that ends
  * on a keyframe stops there instead of swinging past and back. Yaw takes the short way round.
  */
 object ViewPath {
-    /** [base] supplies what keyframes don't (projection, blend) and the view when there are none. */
+    /**
+     * [base] is the starting view (and supplies what keyframes don't: projection, blend); with no
+     * keyframes it is the view throughout.
+     */
     fun at(keys: List<Keyframe>, tUs: Long, base: ViewParams): ViewParams {
         if (keys.isEmpty()) return base
-        val k = keys.sortedBy { it.timeUs }
+        val sorted = keys.sortedBy { it.timeUs }
+        val k = if (sorted.first().timeUs > 0) listOf(Keyframe(0, base.yaw, base.pitch, base.roll, base.fov)) + sorted else sorted
         val t = k.map { it.timeUs.toDouble() }
         val x = tUs.toDouble()
         fun channel(values: List<Double>) = monotone(t, values, x)

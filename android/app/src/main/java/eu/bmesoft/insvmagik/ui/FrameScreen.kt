@@ -108,7 +108,7 @@ fun FrameScreen(vm: FrameViewModel) {
             if (s.keyframes.isNotEmpty()) TextButton(onClick = vm::clearKeyframes) { Text("Clear all") }
         }
         if (s.keyframes.isEmpty()) {
-            Text("No keyframes: one fixed view for the whole clip. Add keyframes at a few moments and the view moves smoothly between them.", style = MaterialTheme.typography.bodySmall)
+            Text("No keyframes: the whole clip keeps this view. Set it as the start, then add keyframes at later moments: the view moves smoothly from the start to each one.", style = MaterialTheme.typography.bodySmall)
         } else {
             Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 s.keyframes.forEach { k ->
@@ -116,7 +116,7 @@ fun FrameScreen(vm: FrameViewModel) {
                     AssistChip(onClick = { vm.grab(k.timeUs) }, label = { Text((if (on) "◆ " else "◇ ") + fmt(k.timeUs / 1e6, 1) + " s") })
                 }
             }
-            Text("The sliders set the view at this frame (it becomes a keyframe). Tap a keyframe to go to it.", style = MaterialTheme.typography.bodySmall)
+            Text("The clip starts with the starting view and moves to each keyframe. The sliders set the view at this frame (it becomes a keyframe). Tap a keyframe to go to it.", style = MaterialTheme.typography.bodySmall)
         }
 
         Angle("Yaw", v.yaw, -180f..180f) { vm.setView(v.copy(yaw = it)) }

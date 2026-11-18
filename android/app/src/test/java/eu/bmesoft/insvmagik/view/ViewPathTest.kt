@@ -13,10 +13,16 @@ class ViewPathTest {
         assertEquals(base, ViewPath.at(emptyList(), 1_000_000, base))
     }
 
-    @Test fun heldBeforeTheFirstAndAfterTheLast() {
+    @Test fun startsFromTheStartingViewAndHoldsTheLast() {
         val keys = listOf(key(1.0, 10.0), key(3.0, 50.0))
-        assertEquals(10.0, ViewPath.at(keys, 0, base).yaw, 1e-9)
+        // The clip opens with the starting view and moves to the first keyframe.
+        assertEquals(base.yaw, ViewPath.at(keys, 0, base).yaw, 1e-9)
+        assertEquals(base.fov, ViewPath.at(keys, 0, base).fov, 1e-9)
+        val early = ViewPath.at(keys, 500_000, base).yaw
+        assertTrue("$early", early > base.yaw && early < 10.0)
         assertEquals(50.0, ViewPath.at(keys, 9_000_000, base).yaw, 1e-9)
+        // A keyframe at 0 s replaces the starting view.
+        assertEquals(-20.0, ViewPath.at(listOf(key(0.0, -20.0), key(2.0, 30.0)), 0, base).yaw, 1e-9)
         // Through every keyframe exactly, and the base keeps what keyframes don't set.
         assertEquals(10.0, ViewPath.at(keys, 1_000_000, base).yaw, 1e-9)
         assertEquals(50.0, ViewPath.at(keys, 3_000_000, base).yaw, 1e-9)

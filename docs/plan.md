@@ -173,7 +173,8 @@ the `.lrv` fallback, more cameras (X3, X4) as samples arrive.
 
 Built so far:
 - **Keyframes** (`view/Keyframes.kt`, `ViewPath`): yaw, pitch, roll and field of view at chosen
-  moments; before the first and after the last the view holds, in between each value follows a
+  moments; the clip starts with the starting view (the one set without keyframes, unless a
+  keyframe sits at 0 s), moves through the keyframes and holds the last; each value follows a
   monotone cubic (Fritsch–Carlson): it eases in and out and never overshoots a keyframe, so a
   pan stops where it was set. Yaw takes the short way round. Keyframes live in the stabilised
   world, so Follow / Locked still apply underneath. Unit-tested (`ViewPathTest`).

@@ -23,7 +23,8 @@ import kotlin.coroutines.coroutineContext
 import kotlin.math.roundToInt
 
 /**
- * Stage 2: the whole clip through one fixed view into a 1080p H.264 MP4 in Movies/insvMagik
+ * Stage 2: the whole clip through a view (fixed, or moving between keyframes: stage 5) into a
+ * 1080p H.264 MP4 in Movies/insvMagik
  * (docs/plan.md, "How the converter works"). Each lens: MediaExtractor → hardware decoder →
  * SurfaceTexture; [GlReframer] draws the view onto the encoder's input surface; MediaMuxer writes
  * the file. Frames of the two lenses are paired by timestamp; the source timestamps go through
@@ -43,12 +44,13 @@ object Exporter {
 
     /**
      * [tracks]: the lens streams, lens 0 first; [rig] in the tracks' full-size pixels.
-     * [motion] gives, per frame time (µs, video clock), the world → camera body turn of the
-     * stabilisation (identity = none). [onProgress] gets 0..1 from the export thread. Cancelling
+     * [view] gives the view per frame time (µs, video clock): fixed, or moving between keyframes.
+     * [motion] gives, per frame time, the world → camera body turn of the stabilisation
+     * (identity = none). [onProgress] gets 0..1 from the export thread. Cancelling
      * the coroutine stops the export and deletes the unfinished file.
      */
     suspend fun export(
-        context: Context, tracks: List<Track>, audio: Track?, rig: Rig, view: ViewParams, name: String,
+        context: Context, tracks: List<Track>, audio: Track?, rig: Rig, view: (Long) -> ViewParams, name: String,
         settings: Settings = Settings(), motion: (Long) -> Mat3 = { Mat3.IDENTITY }, onProgress: (Float) -> Unit,
     ): Result {
         val executor = Executors.newSingleThreadExecutor { r -> Thread(r, "export") }
@@ -61,7 +63,7 @@ object Exporter {
     }
 
     private suspend fun run(
-        context: Context, tracks: List<Track>, audio: Track?, rig: Rig, view: ViewParams, name: String,
+        context: Context, tracks: List<Track>, audio: Track?, rig: Rig, view: (Long) -> ViewParams, name: String,
         settings: Settings, motion: (Long) -> Mat3, onProgress: (Float) -> Unit,
     ): Result {
         require(tracks.isNotEmpty() && tracks.size <= 2)
@@ -195,7 +197,7 @@ object Exporter {
                         stale.forEach { ready[it] = false }
                         continue
                     }
-                    g.draw(rig, view, sizes, present, motion(pts[0]))
+                    g.draw(rig, view(pts[0]), sizes, present, motion(pts[0]))
                     g.swap(pts[0])
                     ready.fill(false)
                     frames++

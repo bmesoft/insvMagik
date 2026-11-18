@@ -4,10 +4,10 @@ An Android tool that turns 360° recordings from Insta360 cameras (`.insv`) into
 **reframed MP4** videos right on the phone: pick the clip's files, choose where to look, export
 to the gallery (and edit further in mobiCut). No Insta360 app, no PC.
 
-**Status:** stage 4 of the [plan](docs/plan.md): a probe that reads the files and measures whether
-the phone can decode them, and a Frame tab that shows a reframed view of one frame and exports
-the whole clip through it as a 1080p MP4, stabilised by the camera's gyro with a level horizon
-(ONE X2, Antigravity A1 and X5 so far). Internal APK only; this repo is private for now and may go public if the converter works out.
+**Status:** stage 5 of the [plan](docs/plan.md): a probe that reads the files and measures whether
+the phone can decode them, and a view tab that shows a reframed frame and exports the whole clip
+as an MP4 (16:9, 9:16 or 1:1), stabilised by the camera's gyro with a level horizon (ONE X2,
+Antigravity A1 and X5 so far), the view fixed or moving between keyframes. Internal APK only; this repo is private for now and may go public if the converter works out.
 
 Part of bmesoft; the repos sit side by side:
 
@@ -44,13 +44,16 @@ Same Gradle plugin versions as mobiCut.
 .\tools\install.ps1 -ApkOnly    # just the APK: android\app\build\outputs\apk\debug\app-debug.apk
 ```
 
-In the app, **Probe** tab: **Choose files** (both `…_00_…` and `…_10_…` of a clip, or the single
+In the app, **Files** tab: **Choose files** (both `…_00_…` and `…_10_…` of a clip, or the single
 file of newer cameras), read the report, **Decode test**, **Copy** and paste the report where it's
-needed. **Frame** tab: the middle of the clip as a flat view; the time slider picks another frame,
-the sliders look around, **Sphere** shows the whole panorama, **Motion** picks the stabilisation
+needed. **View & export** tab: the middle of the clip as a flat view; the time slider picks
+another frame, the sliders look around, **Whole sphere** shows the panorama. **◇ Keyframe here**
+pins the view at this moment; with a few keyframes the view moves smoothly between them (the
+sliders then set the view at the frame on screen). **Motion** picks the stabilisation
 (**Follow**: level horizon, the view turns smoothly with the camera; **Locked**: level, always
-the same direction; **Off**: fixed to the camera body), **Export this view (1080p)** writes the
-clip to `Movies/insvMagik`, **Copy** gives the settings and the export result.
+the same direction; **Off**: fixed to the camera body), **Shape** the output (16:9, 9:16, 1:1),
+**Export** writes the clip to `Movies/insvMagik`, **Copy report** gives the settings and the
+export result. **Seam tools** (folded) are for checking a new camera.
 
 The `.insv` must be on the phone first: USB mass-storage mode of the camera or a card reader
 (see the plan's open questions).

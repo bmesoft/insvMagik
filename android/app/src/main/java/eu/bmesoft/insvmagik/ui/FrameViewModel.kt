@@ -11,12 +11,15 @@ import eu.bmesoft.insvmagik.Probe
 import eu.bmesoft.insvmagik.insv.LensCalibration
 import eu.bmesoft.insvmagik.media.FrameGrabber
 import eu.bmesoft.insvmagik.media.Track
+import eu.bmesoft.insvmagik.view.Aspect
 import eu.bmesoft.insvmagik.view.CameraRig
+import eu.bmesoft.insvmagik.view.Keyframe
 import eu.bmesoft.insvmagik.view.LensImage
 import eu.bmesoft.insvmagik.view.Reframer
 import eu.bmesoft.insvmagik.view.Rig
 import eu.bmesoft.insvmagik.view.SeamCheck
 import eu.bmesoft.insvmagik.view.ViewParams
+import eu.bmesoft.insvmagik.view.ViewPath
 import eu.bmesoft.insvmagik.media.Exporter
 import eu.bmesoft.insvmagik.motion.Attitude
 import eu.bmesoft.insvmagik.motion.ImuTrack
@@ -38,7 +41,8 @@ import java.util.Locale
 
 /**
  * One frame of each lens, rendered as a flat view (or the whole sphere) on the CPU (stage 1), the
- * export of the whole clip (stage 2), stabilised by the camera's gyro (stage 4).
+ * export of the whole clip (stage 2), stabilised by the camera's gyro (stage 4), with the view
+ * moving between keyframes and a choice of output shape (stage 5).
  */
 class FrameViewModel(app: Application) : AndroidViewModel(app) {
     data class State(
@@ -64,15 +68,33 @@ class FrameViewModel(app: Application) : AndroidViewModel(app) {
         val motionReady: Boolean = false,
         /** What the gyro data gave, or why there's no stabilisation. */
         val motionNote: String? = null,
+        /** Where the view looks at chosen moments; empty = the fixed [view] throughout. */
+        val keyframes: List<Keyframe> = emptyList(),
+        val aspect: Aspect = Aspect.LANDSCAPE,
     ) {
         val durationUs: Long get() = tracks.maxOfOrNull { it.durationUs } ?: 0
+
+        /** The time of the frame on screen. */
+        val frameUs: Long get() = grabbed.firstOrNull()?.ptsUs ?: timeUs
+
+        /** Half a frame: how close a keyframe must be to count as "on this frame". */
+        val halfFrameUs: Long get() = (500_000 / (tracks.firstOrNull()?.fps?.takeIf { it > 0 } ?: 30.0)).toLong()
+
+        /** The view on screen: the keyframes' path at this frame, or the fixed view. */
+        val shownView: ViewParams get() = ViewPath.at(keyframes, frameUs, view)
+
+        /** The keyframe on the frame on screen, if there is one. */
+        val keyframeHere: Keyframe? get() = ViewPath.near(keyframes, frameUs, halfFrameUs)
     }
 
     private val _state = MutableStateFlow(State())
     val state: StateFlow<State> = _state.asStateFlow()
 
     /** What the renderer needs; a new value re-renders, intermediate ones are skipped. */
-    private class RenderJob(val rig: Rig, val images: List<LensImage?>, val view: ViewParams, val motion: Mat3, val seam: Boolean)
+    private class RenderJob(
+        val rig: Rig, val images: List<LensImage?>, val view: ViewParams, val motion: Mat3, val seam: Boolean,
+        val width: Int, val height: Int,
+    )
 
     private val jobs = MutableStateFlow<RenderJob?>(null)
     private var exportJob: Job? = null
@@ -83,7 +105,8 @@ class FrameViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch(Dispatchers.Default) {
             jobs.filterNotNull().conflate().collect { job ->
                 val t0 = SystemClock.elapsedRealtime()
-                val (w, h) = if (job.view.projection == ViewParams.Projection.SPHERE) 1024 to 512 else 960 to 540
+                val w = job.width
+                val h = job.height
                 val px = Reframer.render(job.rig, job.images, job.view, w, h, motion = job.motion)
                 val bmp = Bitmap.createBitmap(px, w, h, Bitmap.Config.ARGB_8888)
                 val ms = SystemClock.elapsedRealtime() - t0
@@ -123,8 +146,53 @@ class FrameViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    /**
+     * The sliders moved. Without keyframes this is the fixed view; with keyframes it edits the one
+     * on this frame, adding it if there is none, so the path goes through what's on screen.
+     */
     fun setView(view: ViewParams) {
-        _state.update { it.copy(view = view) }
+        _state.update { s ->
+            val shown = s.shownView
+            val sameLook = view.yaw == shown.yaw && view.pitch == shown.pitch && view.roll == shown.roll && view.fov == shown.fov
+            if (s.keyframes.isEmpty() || sameLook) {
+                // No keyframes, or only the projection / blend changed: not a keyframe edit.
+                s.copy(view = if (s.keyframes.isEmpty()) view else s.view.copy(projection = view.projection, blendDeg = view.blendDeg))
+            } else {
+                val here = s.keyframeHere
+                val key = Keyframe(here?.timeUs ?: s.frameUs, view.yaw, view.pitch, view.roll, view.fov)
+                s.copy(
+                    view = s.view.copy(projection = view.projection, blendDeg = view.blendDeg),
+                    keyframes = (s.keyframes - listOfNotNull(here) + key).sortedBy { it.timeUs },
+                )
+            }
+        }
+        submit(seam = false)
+    }
+
+    /** Adds a keyframe on this frame from the view on screen, or removes the one that's here. */
+    fun toggleKeyframe() {
+        _state.update { s ->
+            val here = s.keyframeHere
+            if (here != null) {
+                // The last one gone: keep its view as the fixed one.
+                val rest = s.keyframes - here
+                s.copy(keyframes = rest, view = if (rest.isEmpty()) s.shownView else s.view)
+            } else {
+                val v = s.shownView
+                s.copy(keyframes = (s.keyframes + Keyframe(s.frameUs, v.yaw, v.pitch, v.roll, v.fov)).sortedBy { it.timeUs })
+            }
+        }
+        submit(seam = false)
+    }
+
+    /** Back to one fixed view: the one on screen. */
+    fun clearKeyframes() {
+        _state.update { it.copy(view = it.shownView, keyframes = emptyList()) }
+        submit(seam = false)
+    }
+
+    fun setAspect(aspect: Aspect) {
+        _state.update { it.copy(aspect = aspect) }
         submit(seam = false)
     }
 
@@ -183,11 +251,18 @@ class FrameViewModel(app: Application) : AndroidViewModel(app) {
         val r = rig ?: return
         val s = _state.value
         val images = List(r.lenses.size) { s.grabbed.getOrNull(it)?.image }
-        val t = s.grabbed.firstOrNull()?.ptsUs ?: s.timeUs
-        jobs.value = RenderJob(r, images, s.view, motionAt(t, s), seam || jobs.value == null)
+        val v = s.shownView
+        val (w, h) = when {
+            v.projection == ViewParams.Projection.SPHERE -> 1024 to 512
+            else -> s.aspect.width / 2 to s.aspect.height / 2
+        }
+        jobs.value = RenderJob(r, images, v, motionAt(s.frameUs, s), seam || jobs.value == null, w, h)
     }
 
-    /** Stage 2: the whole clip through the current view (flat, 1080p, stabilised as chosen) into Movies/insvMagik. */
+    /**
+     * The whole clip through the view (fixed or along the keyframes), stabilised as chosen, in the
+     * chosen shape, into Movies/insvMagik.
+     */
     fun export() {
         val s = _state.value
         if (s.exportProgress != null || s.tracks.isEmpty()) return
@@ -202,15 +277,18 @@ class FrameViewModel(app: Application) : AndroidViewModel(app) {
             Stabilize.OFF -> "_flat"
             Stabilize.FOLLOW -> "_follow"
             Stabilize.LOCKED -> "_locked"
-        }
+        } + s.aspect.suffix
         val stab = stabilizer
         val motion: (Long) -> Mat3 = { t -> stab?.correction(t, mode) ?: Mat3.IDENTITY }
-        val view = s.view.copy(projection = ViewParams.Projection.FLAT)
+        val keys = s.keyframes
+        val base = s.view.copy(projection = ViewParams.Projection.FLAT)
+        val view: (Long) -> ViewParams = { t -> ViewPath.at(keys, t, base) }
+        val settings = Exporter.Settings(s.aspect.width, s.aspect.height)
         _state.update { it.copy(exportProgress = 0f, exportResult = null) }
         exportJob = viewModelScope.launch {
             val text = try {
                 var shown = 0
-                val r = Exporter.export(getApplication(), s.tracks, audio, rig, view, name, motion = motion) { p ->
+                val r = Exporter.export(getApplication(), s.tracks, audio, rig, view, name, settings, motion = motion) { p ->
                     val permille = (p * 1000).toInt()
                     if (permille - shown >= 5) {
                         shown = permille
@@ -244,7 +322,10 @@ class FrameViewModel(app: Application) : AndroidViewModel(app) {
             append("time ${secs(s.timeUs)} s; ")
             s.grabbed.forEachIndexed { i, g -> append("lens $i ${g.fullSize}px → ${g.image.width}px at ${secs(g.ptsUs)} s (${g.decoder}); ") }
             append("decode ${s.grabMs} ms\n")
-            val v = s.view
+            val v = s.shownView
+            append("output ${s.aspect.label} ${s.aspect.width}x${s.aspect.height}; keyframes ${s.keyframes.size}")
+            s.keyframes.forEach { k -> append(" · ${secs(k.timeUs)} s ${n(k.yaw)}/${n(k.pitch)}/${n(k.roll)} fov ${n(k.fov)}") }
+            append("\n")
             append("view ${v.projection} yaw ${n(v.yaw)} pitch ${n(v.pitch)} roll ${n(v.roll)} fov ${n(v.fov)} blend ${n(v.blendDeg)}\n")
             append("stabilise ${if (s.motionReady) s.stabilize else "unavailable"}: ${s.motionNote ?: "–"}\n")
             append("lens 1 tweak yaw ${n(s.tweak.yaw)} pitch ${n(s.tweak.pitch)} roll ${n(s.tweak.roll)}\n")

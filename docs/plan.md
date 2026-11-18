@@ -166,10 +166,26 @@ moving A1 clip (to confirm its gyro axes) and a longer walking clip. A leaning m
 hard case for the horizon: in a long curve the accelerometer reads the bike's own "down", so the
 filter trusts it less the further it is from 1 g.
 
-### 5. Moving the view (later)
+### 5. Moving the view (built; to test on the phone)
 
 Keyframes along the clip (direction and zoom at a few moments, smooth in between), 9:16 output,
-the `.lrv` fallback, more cameras (X3, X4, X5) as samples arrive.
+the `.lrv` fallback, more cameras (X3, X4) as samples arrive.
+
+Built so far:
+- **Keyframes** (`view/Keyframes.kt`, `ViewPath`): yaw, pitch, roll and field of view at chosen
+  moments; before the first and after the last the view holds, in between each value follows a
+  monotone cubic (Fritsch–Carlson): it eases in and out and never overshoots a keyframe, so a
+  pan stops where it was set. Yaw takes the short way round. Keyframes live in the stabilised
+  world, so Follow / Locked still apply underneath. Unit-tested (`ViewPathTest`).
+- On the tab: **◇ Keyframe here** adds one on the frame on screen (or removes it); once there
+  are keyframes, moving a slider sets the view at this frame (adding a keyframe if needed);
+  the keyframe chips jump to their frames; **Clear all** goes back to one fixed view.
+- **Output shape:** 16:9 (1920×1080), 9:16 (1080×1920), 1:1 (1080×1080); the field of view spans
+  the longer side, so switching shape keeps the framing comparable. Files get `_9x16` / `_1x1`.
+- For testers: the tabs are **Files** and **View & export**; the seam tools fold away.
+
+Still to do: the `.lrv` fallback for phones that can't decode the full size, keyframes saved
+with the clip (they live only while the app is open), more cameras.
 
 ## Open questions
 

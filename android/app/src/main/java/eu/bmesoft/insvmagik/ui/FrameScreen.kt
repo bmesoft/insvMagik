@@ -36,6 +36,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
@@ -56,6 +57,7 @@ import java.util.Locale
 fun FrameScreen(vm: FrameViewModel) {
     val s by vm.state.collectAsStateWithLifecycle()
     val clipboard = LocalClipboardManager.current
+    val context = LocalContext.current
     if (s.tracks.isEmpty()) {
         Text("Pick the clip's files on the Files tab first.", Modifier.padding(16.dp))
         return
@@ -163,7 +165,10 @@ fun FrameScreen(vm: FrameViewModel) {
                     Text("Export ${s.aspect.width}×${s.aspect.height}")
                 }
             }
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
             OutlinedButton(onClick = { clipboard.setText(AnnotatedString(vm.report())) }) { Text("Copy report") }
+            OutlinedButton(onClick = { emailReport(context, "insvMagik report: export", vm.report()) }) { Text("Email report") }
         }
         s.exportProgress?.let { LinearProgressIndicator(progress = { it }, modifier = Modifier.fillMaxWidth().padding(top = 4.dp)) }
         s.exportResult?.let { Text(it, style = MaterialTheme.typography.bodySmall) }

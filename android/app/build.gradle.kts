@@ -4,6 +4,11 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
 }
 
+// The release key (the APK people download) never sits in the repo: the release workflow writes
+// it from the repo's secrets and points SIGNING_KEYSTORE_FILE at it. Without it a release build is
+// signed with the debug key, so it can still be built and tried anywhere.
+val releaseKeystore: String? = System.getenv("SIGNING_KEYSTORE_FILE")
+
 android {
     namespace = "eu.bmesoft.insvmagik"
     compileSdk = 36
@@ -12,16 +17,33 @@ android {
         applicationId = "eu.bmesoft.insvmagik"
         minSdk = 29
         targetSdk = 36
-        // tools/install.ps1 sets BUILD_NUMBER (minutes since 2026-01-01), so every build installs
-        // as an update over the previous one.
+        // tools/install.ps1 and the workflows set BUILD_NUMBER (minutes since 2026-01-01), so every
+        // build installs as an update over the previous one; a release sets VERSION_NAME too.
         val build = System.getenv("BUILD_NUMBER")?.toIntOrNull() ?: 1
         versionCode = build
-        versionName = "0.0.$build"
+        versionName = System.getenv("VERSION_NAME") ?: "0.0.$build"
+    }
+
+    signingConfigs {
+        releaseKeystore?.let { path ->
+            create("release") {
+                storeFile = file(path)
+                storePassword = System.getenv("SIGNING_PASSWORD")
+                keyAlias = "insvmagik"
+                keyPassword = System.getenv("SIGNING_PASSWORD")
+            }
+        }
     }
 
     buildTypes {
-        // Internal tool: only debug builds (default debug key), no R8.
+        // Local and pull-request builds: the machine's debug key.
         debug { }
+        // The downloadable APK (.github/workflows/release.yml). No R8: the app is small, and its
+        // stack traces stay readable in reports.
+        release {
+            isMinifyEnabled = false
+            signingConfig = signingConfigs.getByName(if (releaseKeystore != null) "release" else "debug")
+        }
     }
 
     compileOptions {

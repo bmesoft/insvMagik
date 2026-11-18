@@ -7,7 +7,13 @@ to the gallery (and edit further in mobiCut). No Insta360 app, no PC.
 **Status:** stage 5 of the [plan](docs/plan.md): a probe that reads the files and measures whether
 the phone can decode them, and a view tab that shows a reframed frame and exports the whole clip
 as an MP4 (16:9, 9:16 or 1:1), stabilised by the camera's gyro with a level horizon (ONE X2,
-Antigravity A1 and X5 so far), the view fixed or moving between keyframes. Internal APK only; this repo is private for now and may go public if the converter works out.
+Antigravity A1 and X5 so far), the view fixed or moving between keyframes. A test version:
+reports welcome.
+
+**Download:** [insvMagik.apk](https://github.com/bmesoft/insvMagik/releases/latest/download/insvMagik.apk)
+(the latest release, Android 10+). How to install it, get clips onto the phone and use the app:
+the [tester guide](docs/tester-guide.md). Reports and feedback: **office@bmesoft.eu** (the app's
+**Email report** button fills it in).
 
 Part of bmesoft; the repos sit side by side:
 
@@ -31,6 +37,8 @@ bmesoft/
 | `…/motion/` | stabilisation: the gyro in the rig's axes and on the video clock, the orientation per frame, follow / locked views (pure Kotlin, unit-tested) |
 | `…/media/` | Android media: tracks, decoder limits, the decode test, one-frame grabbing, the export (GL shader + encoder) |
 | `…/ui/` | Compose screen |
+| [docs/tester-guide.md](docs/tester-guide.md) | for testers: download, install, clips onto the phone, use, reports |
+| [.github/workflows/](.github/workflows/) | `build.yml`: tests + a test APK on every PR and push; `release.yml`: the signed APK as the latest release |
 | [tools/install.ps1](tools/install.ps1) | build, install on the USB-connected phone, launch |
 | [tools/insv-probe.py](tools/insv-probe.py) | the same file analysis on the PC (Python, standard library) |
 
@@ -71,3 +79,22 @@ python -I ..\tools\insv-probe.py "$env:USERPROFILE\Downloads\VID_20261109_174428
 ```
 
 Sample videos never go in the repo (`.gitignore`): they are big and carry the camera's serial.
+
+## Releases
+
+Actions → **Release** → **Run workflow** (on `main`) tags `release/<date>.<n>`, runs the tests,
+builds the APK signed with the release key and publishes it as the latest release; the download
+link above always gives the newest. The key lives only in the repo secrets
+`SIGNING_KEYSTORE_BASE64` / `SIGNING_PASSWORD` and with the maintainer: every release must use the
+same key, or phones refuse the update.
+
+## Licence
+
+[GNU Affero General Public License v3.0](LICENSE) (AGPL-3.0). Use, study, change and share it
+freely; anyone who distributes a changed version, or offers it to users over a network, must
+publish their source code under the same licence. For other terms, write to office@bmesoft.eu.
+
+The app icon's letters are outlines of Nunito ExtraBold (© 2014 The Nunito Project Authors,
+SIL Open Font License 1.1). The `.insv` format notes draw on
+[telemetry-parser](https://github.com/AdrianEddy/telemetry-parser) (MIT / Apache-2.0); no code is
+copied from it. Not affiliated with Insta360 or Antigravity; the app reads `.insv` files.

@@ -1,8 +1,8 @@
 # Plan: .insv → reframed MP4 on the phone
 
-**Goal:** an internal Android APK. Pick the `.insv` file(s) of one 360° clip, choose where to look,
+**Goal:** an Android app (public, AGPL-3.0, APK from the GitHub releases). Pick the `.insv` file(s) of one 360° clip, choose where to look,
 export a normal flat **1080p MP4** to the gallery, ready for mobiCut. No Insta360 app, no PC.
-Private for now; public later if it works well. If it proves itself, the converter may move into
+Public since stage 5, with testers. If it proves itself, the converter may move into
 mobiCut.
 
 **Not the goal:** Insta360-app quality (optical-flow stitching, colour matching between lenses),
@@ -209,7 +209,8 @@ with the clip (they live only while the app is open), more cameras.
 
 - Samples never go in the repo. Unit tests that need them read the folder in `INSV_SAMPLES`
   and skip without it.
-- The APK is internal: built locally (`tools/install.ps1`), not published, until the repo goes
-  public. No Insta360 or Antigravity branding in the app; "for .insv files" is fine.
+- The APK is published only through `release.yml` (signed with the release key), never by hand;
+  testers follow `docs/tester-guide.md`. No Insta360 or Antigravity branding in the app; "for
+  .insv files" is fine.
 - No code copied from GPL projects (Gyroflow's app); telemetry-parser is MIT/Apache-2.0 and may be
   read and ported with attribution.

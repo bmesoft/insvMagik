@@ -23,6 +23,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
@@ -34,6 +35,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 fun ProbeScreen(vm: ProbeViewModel) {
     val state by vm.state.collectAsStateWithLifecycle()
     val clipboard = LocalClipboardManager.current
+    val context = LocalContext.current
     // .insv has no MIME type Android knows, so the picker must allow every file.
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
         if (uris.isNotEmpty()) vm.pick(uris)
@@ -55,7 +57,10 @@ fun ProbeScreen(vm: ProbeViewModel) {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
             Button(onClick = { picker.launch(arrayOf("*/*")) }, enabled = idle) { Text("Choose files") }
             Button(onClick = vm::runBench, enabled = idle && state.files.isNotEmpty()) { Text("Decode test") }
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
             OutlinedButton(onClick = { clipboard.setText(AnnotatedString(state.report)) }) { Text("Copy") }
+            OutlinedButton(onClick = { emailReport(context, "insvMagik report: files and decode test", state.report) }) { Text("Email report") }
         }
         state.busy?.let {
             Spacer(Modifier.height(12.dp))

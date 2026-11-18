@@ -1,6 +1,6 @@
 <#
 Builds insvMagik on this computer, installs it on the phone connected over USB (or wireless
-debugging) and starts it. Same idea as mobicut's platform/android/tools/install-test.ps1.
+debugging) and starts it.
 
 The versionCode is minutes since 2026-01-01, so each build installs as an update.
 

@@ -1,0 +1,4 @@
+# The maintainer owns everything: a pull request into main needs their approval (the "main"
+# ruleset: PRs only, code-owner review, no force push, no deletion; the maintainer may merge
+# their own PRs).
+* @bme327

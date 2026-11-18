@@ -90,8 +90,12 @@ data class ViewParams(
  * cross-fade where they're close.
  */
 object Reframer {
-    fun render(rig: Rig, images: List<LensImage?>, view: ViewParams, width: Int, height: Int, out: IntArray = IntArray(width * height)): IntArray {
-        val toLens = rig.lenses.map { it.toLens * view.rotation() }
+    /** [motion]: world → camera body at this frame (stabilisation, `motion/Stabilizer`); identity = none. */
+    fun render(
+        rig: Rig, images: List<LensImage?>, view: ViewParams, width: Int, height: Int,
+        out: IntArray = IntArray(width * height), motion: Mat3 = Mat3.IDENTITY,
+    ): IntArray {
+        val toLens = rig.lenses.map { it.toLens * motion * view.rotation() }
         val blend = Math.toRadians(max(view.blendDeg, 0.01))
         val focal = width / 2.0 / tan(Math.toRadians(view.fov.coerceIn(1.0, 179.0)) / 2)
         IntStream.range(0, height).parallel().forEach { py ->

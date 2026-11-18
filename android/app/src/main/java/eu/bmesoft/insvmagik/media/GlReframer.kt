@@ -100,10 +100,11 @@ class GlReframer(output: Surface, private val width: Int, private val height: In
      * Renders the view. [lensSizes] are the decoded pictures' width × height (the rig's pixel
      * units); [present] says which lenses have a stream at all.
      */
-    fun draw(rig: Rig, view: ViewParams, lensSizes: List<Pair<Int, Int>>, present: List<Boolean>) {
+    fun draw(rig: Rig, view: ViewParams, lensSizes: List<Pair<Int, Int>>, present: List<Boolean>, motion: Mat3 = Mat3.IDENTITY) {
         GLES20.glViewport(0, 0, width, height)
         GLES20.glUseProgram(program)
-        val viewRot = view.rotation()
+        // [motion]: world → camera body at this frame (stabilisation); identity = none.
+        val viewRot = motion * view.rotation()
         val st = FloatArray(16)
         for (i in 0 until 2) {
             val lens = rig.lenses.getOrNull(i)

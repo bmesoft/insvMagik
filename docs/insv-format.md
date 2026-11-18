@@ -8,6 +8,7 @@ Insta360 doesn't document `.insv`. This is what the two samples show, checked wi
 |---|---|---|---|
 | `VID_20231126_111301_00_004.insv` (43.7 MB, 3.8 s) | Insta360 ONE X2 | v1.0.62_build2 | lens 0 only; lens 1 is in `…_10_004.insv` (not in hand yet) |
 | `VID_20261109_174428_032.insv` (199.8 MB, 9.0 s) | Antigravity A1 (360° drone) | 10.0.397.3_5.5 | both lenses in one file |
+| `VID_20220625_140410_10_008.insv` (356.5 MB, 47 s) | Insta360 ONE RS 1-inch 360 | – | lens 1 only, **no trailer** (below) |
 
 Samples stay out of the repo (`.gitignore`): they are big and carry the camera's serial number.
 
@@ -25,7 +26,16 @@ any video, whatever the extension. The Insta360 data block (the *trailer*) follo
 
 File names (Insta360 manuals): `VID_<date>_<time>_00_<seq>.insv` + `…_10_…` are the two lenses
 of one clip (ONE X2, X3); X4 and newer write one `VID_<date>_<time>_<seq>.insv` (the A1 too).
-Low-res proxies: `LRV_…` / `.lrv`, with `01` / `11` in the lens slot.
+Low-res proxies: `LRV_…` / `.lrv`, with `01` / `11` in the lens slot. A phone browser may save
+a download as `….insv.3gpp` or `….insv (1).3gpp` (extension from the MIME type); the app reads
+those names too.
+
+**A file without a trailer** (ONE RS 1-inch 360, measured once): `ftyp`, `mdat`, a complete
+`moov` (3072×3072 H.264 at 24 fps, AAC, an empty 10 Hz `mov_text` track, a `udta` with an
+Ambarella `AMBA` box), then a `free` box of leftover bytes that pads the file to exactly 340 MiB.
+No trailer magic anywhere: no calibration, no gyro, so nothing to reframe it with. Why is a guess
+(the camera reserves space in chunks; a recording that ended badly keeps its video and loses the
+trailer). Its `_00_` file wasn't checked.
 
 ## The trailer
 
@@ -40,6 +50,9 @@ Low-res proxies: `LRV_…` / `.lrv`, with `01` / `11` in the lens slot.
 - **Index** (A1): the record right before the footer has id 0 and is an index of 10-byte entries
   `[u16 id][u32 size][u32 offset from trailer start]`, where **the id is big-endian** (`03 00` =
   0x300). Records sit at padded offsets; empty entries are all zeros.
+
+telemetry-parser reads the same two bytes as `[u8 format][u8 id]` (chain) and `[u8 id][u8 format]`
+(index), so its record ids are ours divided by 0x100 (gyro = 3, exposure = 4).
 
 | Id | ONE X2 | A1 | What |
 |---|---|---|---|
@@ -56,6 +69,23 @@ A protobuf message without a schema. Fields seen (measured): **1** serial number
 ("Insta360 ONE X2", "Antigravity A1"), **3** firmware, **5** and **17** a basic lens calibration,
 **53–56** longer calibrations (53 = 55 and 54 = 56 in both samples), **22** "vivid" on the X2
 (colour profile, guess).
+
+Motion fields; names from telemetry-parser (MIT/Apache-2.0, `src/insta360/extra_info.rs`),
+values from the samples:
+
+| Field | What | ONE X2 | A1 |
+|---|---|---|---|
+| 24 | first frame's time on the gyro clock, in the gyro clock's unit | 153 676 (ms) | 84 367 315 (µs) |
+| 25 | rolling-shutter readout, ms | 23.5 | 21.25 |
+| 28 (+ 29 = 1) | extra gyro time offset, ms | −6.0 | 3.7 |
+| 62 | gyro record holds raw 16-bit counts | – | 1 |
+| 65 | sensor ranges: `{1: ± g, 2: ± °/s}` | – | 32, 2000 |
+| 31 | "gyro calibration": 6 × f64 + u64 | small numbers | small numbers, **not** the A1's resting gyro offset; unused |
+| 60 | 9 × f32, a turn close to 180° about z (not in telemetry-parser) | present | – |
+| 69, 91 | 4 floats / 4 doubles, unit quaternions (not in telemetry-parser) | – | present |
+
+Fields 60, 69 and 91 look like sensor or attitude turns; none was needed (field 60 on top of
+the measured X2 axes doesn't stabilise better).
 
 ### Lens calibration ("offset")
 
@@ -83,23 +113,39 @@ lens sees ~194°, so the two overlap by a few degrees around the seam.
 **Rotation, measured on the A1 sample:** world → lens i = `Rz(roll) · Ry(−yaw) · Rx(pitch) · B`
 with the XI string's angles, `B` = identity for lens 0 and a 180° turn about x for lens 1
 (axes: x right, y down, z forward). Every reading of the angles was tried; this one lines the
-seam up (brightness correlation 0.76 across the overlap) **and** gives a level world: the
-ground-facing lens points along +y (down), the sky lens up, the horizon is level. On the ONE X2
-sample this world is the camera body's, not level (the camera was held tilted); levelling is
-stage 4's job. BASIC uses a different angle convention (A1: yaw 180, roll 89 where XI says
+seam up (brightness correlation 0.76 across the overlap) and puts the ground-facing lens along
++y (down), the sky lens up. This world is the **camera body**, not level: the A1 sample comes
+out ~10° tilted (the drone stands tilted on its table), the ONE X2 sample ~80° (held sideways).
+The gyro and accelerometer level it (below, "Motion"). BASIC uses a different angle convention (A1: yaw 180, roll 89 where XI says
 pitch 90, roll −90), not worked out since XI is present on both cameras.
 
 ### Gyro + accelerometer (0x300)
 
-| | ONE X2 (measured) | A1 (measured layout, values not decoded) |
+| | ONE X2 (measured) | A1 (measured) |
 |---|---|---|
-| Entry | 56 B: `u64` time **ms**, accel xyz (g), gyro xyz (rad/s), all `f64` | 20 B: `u64` time **µs**, 6 × `u16` stored as value + 0x8000 |
+| Entry | 56 B: `u64` time **ms**, accel xyz (g), gyro xyz (rad/s), all `f64` | 20 B: `u64` time **µs**, accel xyz then gyro xyz as `u16` stored as count + 0x8000 |
+| Scale | as stored | ± range / 32768 per count, ranges from field 65: 1024 counts per g, 16.384 per °/s |
 | Rate | 500 Hz | ~1000 Hz |
-| Span | 5.34 s for a 3.84 s video (starts ~1.5 s early) | 9.56 s for 8.98 s |
+| Span | 5.34 s for a 3.84 s video (starts 1.34 s before frame 0) | 9.56 s for 8.98 s (starts 0.27 s before) |
 
-The X2's accel vector is about 0.93 long in the first samples, so its unit is g. The A1's scale (counts per g and
-per rad/s) and axis order are unknown; telemetry-parser (MIT/Apache-2.0, used by Gyroflow) reads
-Insta360 gyro data and may know them.
+Accel first, then gyro, in both (telemetry-parser, and the 1 g at rest fits).
+
+## Motion
+
+**Clock** (telemetry-parser's rule, checked): video time = gyro time − field 24 − field 28 (ms).
+On the X2 clip, stabilising with the gyro shifted by −20…+20 ms is best at 0 (±5 ms). On the A1
+the exposure entry at field 24's time is entry 8, 22 µs away. Video timestamps start at 0 in
+both samples.
+
+**Axes** (body = rig's world: x right, y down, z forward; the accelerometer reads +1 g **up**):
+
+| Camera | body x | body y | body z | How it was found |
+|---|---|---|---|---|
+| ONE X2 | sensor x | sensor z | −sensor y | from the video: of all 24 axis-to-axis turns, this one stabilises the background best (frame-to-frame change 2.64 vs 5.27 unstabilised and 3.49 for the next best) |
+| Antigravity A1 | −sensor z | −sensor y | −sensor x | from gravity: the only turn of the four that put the sensor's up (its +y) up which levels the horizon and stands the walls upright; gyro assumed on the accelerometer's axes (the sample doesn't move) |
+
+**Resting gyro offset:** the A1 at rest reads (−0.0043, 0.0019, −0.0003) rad/s in its own axes,
+~0.25 °/s; field 31 doesn't match it, so the app measures it from the still moments of the clip.
 
 ### Exposure (0x400)
 

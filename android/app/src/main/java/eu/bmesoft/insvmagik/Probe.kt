@@ -14,6 +14,7 @@ import eu.bmesoft.insvmagik.insv.LensCalibration
 import eu.bmesoft.insvmagik.media.BenchResult
 import eu.bmesoft.insvmagik.media.MediaProbe
 import eu.bmesoft.insvmagik.media.Track
+import eu.bmesoft.insvmagik.motion.SensorAxes
 import java.io.FileInputStream
 import java.util.Locale
 
@@ -103,6 +104,12 @@ object ProbeReport {
                 }
             }
             f.imu?.let { line("  gyro: ${it.count} samples, ${it.format}, ${n(it.rateHz, 0)} Hz over ${n(it.spanUs / 1e6, 2)} s") }
+            f.camera?.let { c ->
+                val known = if (SensorAxes.forModel(c.model) != null) "axes known" else "axes not known yet: no stabilisation"
+                line("  motion: first frame at ${c.firstFrameTime ?: "?"}, gyro offset ${c.gyroOffsetMs?.let { n(it, 1) } ?: "–"} ms, " +
+                    "readout ${c.readoutMs?.let { n(it, 2) } ?: "?"} ms" +
+                    (c.ranges?.let { (a, g) -> ", ranges ±$a g ±$g °/s" } ?: "") + ", $known")
+            }
             f.exposures?.let { e ->
                 val s = e.seconds.filter { it > 0 }
                 val range = if (s.isEmpty()) "" else ", 1/${n(1 / s.max(), 0)}..1/${n(1 / s.min(), 0)} s"

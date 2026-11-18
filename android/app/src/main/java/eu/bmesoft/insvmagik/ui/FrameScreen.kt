@@ -36,11 +36,12 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import eu.bmesoft.insvmagik.motion.Stabilize
 import eu.bmesoft.insvmagik.view.CameraRig
 import eu.bmesoft.insvmagik.view.ViewParams
 import java.util.Locale
 
-/** Stage 1: look around one frame of the clip and check the seam between the lenses. */
+/** Look around one frame of the clip, choose the stabilisation, export; plus the seam check. */
 @Composable
 fun FrameScreen(vm: FrameViewModel) {
     val s by vm.state.collectAsStateWithLifecycle()
@@ -88,6 +89,17 @@ fun FrameScreen(vm: FrameViewModel) {
             Spacer(Modifier.weight(1f))
             OutlinedButton(onClick = { vm.setView(ViewParams(projection = v.projection, blendDeg = v.blendDeg)) }) { Text("Reset") }
         }
+        // Stabilisation from the gyro: level horizon, the view following the camera or locked.
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text("Motion", style = MaterialTheme.typography.bodySmall)
+            for ((mode, label) in listOf(Stabilize.OFF to "Off", Stabilize.FOLLOW to "Follow", Stabilize.LOCKED to "Locked")) {
+                FilterChip(
+                    selected = if (s.motionReady) s.stabilize == mode else mode == Stabilize.OFF,
+                    onClick = { vm.setStabilize(mode) }, label = { Text(label) }, enabled = s.motionReady,
+                )
+            }
+        }
+        s.motionNote?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
         Angle("Yaw", v.yaw, -180f..180f) { vm.setView(v.copy(yaw = it)) }
         Angle("Pitch", v.pitch, -90f..90f) { vm.setView(v.copy(pitch = it)) }
         Angle("Roll", v.roll, -180f..180f) { vm.setView(v.copy(roll = it)) }

@@ -8,8 +8,13 @@ package eu.bmesoft.insvmagik.insv
  *   Antigravity A1).
  */
 object ClipFiles {
-    private val TWO = Regex("""^(VID|LRV)_(\d{8}_\d{6})_(\d)(\d)_(\d{3})\.(insv|lrv)$""", RegexOption.IGNORE_CASE)
-    private val ONE = Regex("""^(VID|LRV)_(\d{8}_\d{6})_(\d{3})\.(insv|lrv)$""", RegexOption.IGNORE_CASE)
+    /**
+     * What a download may add after the real name: a copy number and an extension guessed from
+     * the MIME type (a phone browser saved `VID_…_10_008.insv` as `VID_…_10_008.insv (1).3gpp`).
+     */
+    private const val TAIL = """(?: \(\d+\))?(?:\.[a-z0-9]{1,5})?$"""
+    private val TWO = Regex("""^(VID|LRV)_(\d{8}_\d{6})_(\d)(\d)_(\d{3})\.(insv|lrv)$TAIL""", RegexOption.IGNORE_CASE)
+    private val ONE = Regex("""^(VID|LRV)_(\d{8}_\d{6})_(\d{3})\.(insv|lrv)$TAIL""", RegexOption.IGNORE_CASE)
 
     data class Name(val clip: String, val lens: Int?, val proxy: Boolean)
 

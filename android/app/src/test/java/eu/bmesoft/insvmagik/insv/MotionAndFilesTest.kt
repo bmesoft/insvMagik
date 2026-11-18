@@ -45,6 +45,9 @@ class MotionAndFilesTest {
         assertEquals(ClipFiles.Name("20231126_111301_004", 1, false), ClipFiles.parse("VID_20231126_111301_10_004.insv"))
         assertEquals(ClipFiles.Name("20231126_111301_004", 0, true), ClipFiles.parse("LRV_20231126_111301_01_004.lrv"))
         assertEquals(ClipFiles.Name("20261109_174428_032", null, false), ClipFiles.parse("VID_20261109_174428_032.insv"))
+        // A phone browser's download adds a copy number and an extension.
+        assertEquals(ClipFiles.Name("20220625_140410_008", 1, false), ClipFiles.parse("VID_20220625_140410_10_008.insv.3gpp"))
+        assertEquals(ClipFiles.Name("20220625_140410_008", 1, false), ClipFiles.parse("VID_20220625_140410_10_008.insv (1).3gpp"))
         assertNull(ClipFiles.parse("holiday.mp4"))
     }
 

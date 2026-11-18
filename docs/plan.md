@@ -105,7 +105,7 @@ becomes the GL shader in stage 2. On the phone it renders on the CPU: preview on
 *Done when:* distant scenery (horizon, landing field) shows no visible seam on both samples.
 A1: done (PC 0.76, Pixel 8 0.78 seam match). ONE X2: needs the `_10_` file.
 
-### 2. Export a fixed view (built; to test on the phone)
+### 2. Export a fixed view (done)
 
 The full pipeline above with one fixed view, a progress bar, cancel, the screen kept on. Output
 to `Movies/insvMagik/<clip>_flat.mp4`. Then the speed is known for real on each phone.
@@ -116,6 +116,8 @@ on the Frame tab uses the current yaw, pitch, roll, field of view and lens-1 twe
 phone can test it: the GPU path has no unit test (the shader mirrors the tested CPU maths).
 
 *Done when:* a 1-minute clip exports, plays in the gallery and opens in mobiCut; audio in sync.
+Done on the Pixel 8 with both samples: every source frame in the output, the source duration,
+the X2's audio copied and starting with the video.
 
 ### 3. The real lens model
 
@@ -126,16 +128,37 @@ seam up. Left: check the ONE X2 pair, decide whether the small lens-1 translatio
 *Done when:* close objects (a hand, the selfie stick's surroundings, the paraglider's lines)
 cross the seam with only a small step.
 
-### 4. Stabilisation and level horizon
+### 4. Stabilisation and level horizon (built; to test on the phone)
 
-Integrate the gyro into an orientation per frame; take "down" from the accelerometer (low-pass,
-complementary filter) for a level horizon. Match frames to gyro time through the exposure list
-(find which entry is frame 0: the lists are longer than the video). Two view modes: **locked**
-(the view stays pointed at the same place in the world) and **follow** (the view turns with the
-camera's smoothed heading, like the Insta360 app's default). Rolling-shutter correction only if
-the result wobbles.
+Integrate the gyro into an orientation per frame; take "down" from the accelerometer (a
+complementary filter) for a level horizon. Two view modes: **locked** (the view stays pointed at
+the same place in the world) and **follow** (the view turns with the camera's smoothed heading,
+like the Insta360 app's default). Rolling-shutter correction only if the result wobbles.
 
-*Done when:* a walking or flying clip looks steady with a level horizon in both modes.
+How it turned out (details in [insv-format.md](insv-format.md), "Motion"):
+- **Clock:** no need to search the exposure list: the camera info says when frame 0 was taken on
+  the gyro's clock (field 24) plus a small offset (field 28), as telemetry-parser reads them.
+  Checked on the X2 clip: shifting the gyro by ±5 ms only makes it worse.
+- **Units:** the A1's raw counts scale by the sensor ranges in field 65 (± 32 g, ± 2000 °/s);
+  at rest the accelerometer reads 0.996 g.
+- **Axes:** where the sensor sits in the rig's body axes is per camera model (`SensorAxes`). ONE
+  X2: found from its video, by stabilising with all 24 axis-to-axis turns and keeping the one that
+  holds the background stillest (half the frame-to-frame change of no stabilisation; the next
+  best turn is clearly worse). A1: its sample doesn't move, so only gravity tells: the turn that
+  levels the horizon (the drone sits ~10° tilted on the table, so the calibration's own "world"
+  is the drone body, not level). The A1's gyro axes are assumed to be the accelerometer's.
+- **Resting gyro offset:** measured from every still half second (the A1 drifts ~0.25 °/s
+  otherwise); a handheld clip that never rests keeps it.
+- Built as `motion/` (pure Kotlin, unit-tested; `SampleMotionTest` checks the X2 axes and clock
+  on its frames): `ImuTrack` (axes, units, clock), `Attitude` (the filter), `Stabilizer`
+  (follow / locked per frame time). The renderer and the export shader take one extra rotation
+  per frame, so the shader didn't change. The Frame tab has **Motion: Off / Follow / Locked**;
+  the export uses the choice (`…_follow.mp4`, `…_locked.mp4`, `…_flat.mp4`).
+- Other cameras get "no stabilisation yet" until their axes are measured; the yaw of Locked
+  drifts slowly (no compass), Follow doesn't care.
+
+*Done when:* a walking or flying clip looks steady with a level horizon in both modes. Needs a
+moving A1 clip (to confirm its gyro axes) and a longer walking clip.
 
 ### 5. Moving the view (later)
 
@@ -144,11 +167,10 @@ the `.lrv` fallback, more cameras (X3, X4, X5) as samples arrive.
 
 ## Open questions
 
-1. **A1 gyro values:** 16-bit counts with an unknown scale and axis order. Check telemetry-parser
-   (MIT/Apache-2.0) for Insta360's scales; otherwise calibrate: the accelerometer reads 1 g at
-   rest, and the gyro must match the motion seen in the video.
-2. **Frame ↔ exposure entry:** which of the longer exposure list is frame 0 (X2: 130 entries for
-   115 frames; A1: 287 for 269).
+1. **A1 gyro values:** answered: ranges from field 65, axes from gravity (stage 4). Still to
+   confirm with a clip where the drone moves.
+2. **Frame ↔ gyro time:** answered: camera-info fields 24 and 28 (stage 4). On the A1 the
+   exposure entry at that time is entry 8 of 287.
 3. **The ONE X2's `_10_` file:** does it carry its own trailer, or only `_00_`? Needs the pair.
 4. **Lens model meaning:** XI is answered (omnidirectional model, `k1 k2 k3 p1 p2`, rotation
    convention found; insv-format.md). POLY and the BASIC angle convention are still unknown;

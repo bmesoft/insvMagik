@@ -1,15 +1,18 @@
-"""Generate the app icon (an adaptive icon: white background, teal line drawing) from the owner's
-sketch: a fisheye circle, the hatched part outside the reframed picture, and the flat frame
-with "360°" and "MAGIK" in it. Writes the Android vector drawable and the same drawing as
-`art/icon.svg` (for anything outside the app: a README, a store listing later).
+"""Generate the app icon (an adaptive icon: white background, teal drawing) from the owner's
+sketch: a fisheye circle filled solid outside the reframed picture, and the flat frame with
+"360°" and "MAGIK" in it in a serif face. Writes the Android vector drawable and the same drawing
+as `art/icon.svg` (for anything outside the app: a README, a store listing later).
 
   python -I tools/make-icon.py
 
-Standard library only. Everything is strokes (no fills), so the same drawing serves as the
-monochrome layer of themed icons. Coordinates are the adaptive icon's 108 × 108 dp canvas;
-keep the drawing inside the 66 dp safe circle around the centre.
+Standard library only. Coordinates are the adaptive icon's 108 × 108 dp canvas; keep the drawing
+inside the 66 dp safe circle around the centre. The drawing is one colour, so it also serves as
+the monochrome layer of themed icons.
+
+The letters are the outlines of **PT Serif Bold** (© 2010 ParaType Ltd., SIL Open Font License
+1.1, https://fonts.google.com/specimen/PT+Serif), taken with fontTools' SVGPathPen; font units,
+1000 per em, y up, baseline 0, caps 700 high.
 """
-import math
 import os
 
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
@@ -17,127 +20,86 @@ RES = os.path.join(ROOT, "android", "app", "src", "main", "res")
 
 TEAL = "#00AACF"
 C = 54.0  # canvas centre
-R = 31.5  # the fisheye circle
-RECT = (31.0, 39.5, 77.0, 68.5)  # left, top, right, bottom of the reframed picture
+R = 32.0  # the fisheye circle
+RECT = (30.0, 38.0, 78.0, 70.0)  # left, top, right, bottom of the reframed picture
 
-# Letters as strokes in a unit box (height 1, y down): (width, path).
-LETTERS = {
-    "3": (0.82, "M0.04,0.16 C0.18,-0.04 0.74,-0.06 0.74,0.25 C0.74,0.44 0.52,0.48 0.34,0.48 "
-                "M0.34,0.48 C0.62,0.48 0.82,0.58 0.82,0.76 C0.82,1.06 0.2,1.08 0.0,0.86"),
-    "6": (0.84, "M0.74,0.06 C0.38,-0.04 0.04,0.24 0.04,0.62 C0.04,0.9 0.24,1.0 0.44,1.0 "
-                "C0.68,1.0 0.84,0.86 0.84,0.68 C0.84,0.48 0.66,0.38 0.44,0.38 C0.24,0.38 0.08,0.5 0.05,0.64"),
-    "0": (0.84, "M0.42,0 C0.14,0 0,0.26 0,0.5 C0,0.78 0.14,1 0.42,1 C0.7,1 0.84,0.78 0.84,0.5 "
-                "C0.84,0.22 0.7,0 0.42,0 Z"),
-    "°": (0.3, "M0.03,0.13 A0.12,0.12 0 1,0 0.27,0.13 A0.12,0.12 0 1,0 0.03,0.13 Z"),
-    "M": (0.92, "M0,1 L0.06,0 L0.46,0.66 L0.86,0 L0.92,1"),
-    "A": (0.8, "M0,1 L0.4,0 L0.8,1 M0.15,0.64 L0.65,0.64"),
-    "G": (0.84, "M0.8,0.18 C0.66,0.03 0.52,0 0.42,0 C0.14,0 0,0.26 0,0.5 C0,0.78 0.14,1 0.42,1 "
-                "C0.64,1 0.82,0.86 0.84,0.6 L0.46,0.6"),
-    "I": (0.12, "M0.06,0 L0.06,1"),
-    "K": (0.8, "M0,0 L0,1 M0.76,0 L0.06,0.62 M0.3,0.42 L0.8,1"),
+# char: (ink left, ink right, outline) in PT Serif Bold font units.
+GLYPHS = {
+    "3": (55, 520, "M257 53Q280 53 302 64Q324 74 342 93Q359 112 370 138Q380 164 380 194Q380 228 368 252Q357 277 338 293Q320 309 296 316Q272 324 248 324H190V364L340 560L374 595V599L320 593H169L130 491H96Q91 512 86 541Q80 570 76 599Q71 628 68 655Q66 682 66 700H502V651L329 440L286 396V394L320 401Q367 399 404 384Q442 368 468 342Q493 315 506 280Q520 245 520 203Q520 153 498 113Q477 73 441 45Q405 17 357 2Q309 -12 256 -12Q226 -12 196 -8Q166 -3 140 5Q113 13 92 24Q70 35 55 48L92 152H121Q127 145 138 134Q148 122 160 109Q171 96 182 83Q193 70 201 61Q211 59 224 56Q236 53 257 53Z"),
+    "6": (38, 536, "M536 215Q536 163 516 121Q497 79 464 50Q431 20 386 4Q342 -12 292 -12Q230 -12 182 8Q135 27 103 62Q71 97 54 145Q38 193 38 250Q38 344 71 422Q104 500 160 560Q216 620 290 660Q365 700 449 718L464 675Q410 658 364 629Q318 600 282 558Q247 517 224 464Q202 412 196 349Q204 362 216 374Q229 387 247 398Q265 408 288 414Q312 421 342 421Q383 421 418 408Q454 395 480 369Q506 343 521 304Q536 266 536 215ZM386 203Q386 351 287 351Q253 351 229 334Q205 316 194 293Q191 279 190 260Q188 242 188 225Q188 191 194 160Q200 128 213 104Q226 79 246 64Q267 49 296 49Q321 49 338 62Q355 74 366 95Q376 116 381 144Q386 172 386 203Z"),
+    "0": (23, 542, "M23 350Q23 440 42 508Q62 575 96 620Q131 666 178 689Q226 712 282 712Q402 712 472 622Q542 531 542 350Q542 260 522 192Q503 125 468 80Q432 34 383 11Q334 -12 276 -12Q215 -12 168 12Q121 37 88 84Q56 130 40 197Q23 264 23 350ZM173 350Q173 278 178 221Q182 164 194 124Q206 85 226 64Q245 43 275 43Q310 43 332 60Q355 77 368 114Q382 151 387 209Q392 267 392 350Q392 422 388 479Q384 536 372 576Q361 615 340 636Q318 657 282 657Q250 657 229 640Q208 623 196 586Q183 549 178 490Q173 432 173 350Z"),
+    "°": (69, 357, "M69 571Q69 602 80 628Q92 654 112 672Q131 691 158 702Q184 712 213 712Q242 712 268 703Q295 694 314 676Q334 659 346 632Q357 606 357 571Q357 538 346 512Q334 486 314 468Q295 449 268 440Q242 430 213 430Q184 430 158 440Q131 449 112 468Q92 486 80 512Q69 538 69 571ZM138 571Q138 533 161 512Q184 491 213 491Q245 491 266 510Q288 530 288 571Q288 610 266 630Q245 651 213 651Q180 651 159 630Q138 609 138 571Z"),
+    "M": (20, 910, "M909 0H610V38Q630 48 649 55Q668 62 690 67V485L695 602H687L654 495L461 0H415L223 491L187 608H178L179 481V71Q198 67 221 58Q244 49 264 38V0H20V38Q36 46 60 57Q83 68 104 72V633Q84 637 62 644Q39 651 22 662V700H293L446 293L475 197H476L506 295L662 700H910V662Q893 652 874 644Q854 637 834 633V66Q855 62 874 54Q894 46 909 38Z"),
+    "A": (0, 729, "M247 0H0V38Q16 48 34 56Q53 63 71 67L329 712H403L654 67Q674 63 694 56Q714 48 729 38V0H416V38Q435 47 457 55Q479 63 499 67L441 226H219L160 67Q206 61 247 38ZM243 291H420L355 482L336 568H334L312 480Z"),
+    "G": (39, 698, "M636 44Q616 34 587 24Q558 14 526 6Q494 -2 462 -7Q430 -12 405 -12Q319 -12 252 10Q184 33 136 78Q89 124 64 192Q39 260 39 350Q39 448 70 516Q100 585 150 628Q201 672 265 692Q329 712 396 712Q462 712 520 703Q578 694 612 677Q612 662 610 638Q609 615 606 588Q603 561 598 534Q594 507 588 485H547L491 637Q480 642 458 644Q436 647 414 647Q373 647 335 631Q297 615 268 580Q239 544 222 488Q205 431 205 350Q205 284 220 230Q236 175 264 136Q292 97 331 75Q370 53 417 53Q432 53 448 56Q464 58 478 62Q492 66 502 71Q513 76 517 80V268Q491 270 468 278Q445 286 425 297V335H698V297Q689 288 674 280Q659 273 636 268Z"),
+    "I": (30, 342, "M342 0H30V38Q70 60 111 67V633Q91 636 69 644Q47 652 30 662V700H342V662Q324 651 302 644Q281 636 261 633V67Q281 63 302 56Q324 49 342 38Z"),
+    "K": (20, 710, "M399 700H667V662Q650 651 628 644Q606 636 588 633L398 392Q421 360 452 320Q483 279 518 236Q553 192 590 148Q627 103 662 63L710 34V0H536L496 28Q472 58 446 94Q419 131 393 170Q367 210 342 250Q317 290 295 328H252V67Q274 63 292 55Q310 47 323 38V0H20V38Q40 48 61 56Q82 63 102 67V633Q79 636 58 644Q36 652 20 662V700H323V662Q310 654 292 646Q273 638 252 633V379L311 393L472 633Q452 637 432 646Q413 654 399 662Z"),
 }
 
 
-def text(s, height, top, gap, stroke):
-    """Groups that draw [s] centred on the canvas, [height] tall from [top]."""
-    widths = [LETTERS[ch][0] for ch in s]
-    total = (sum(widths) + gap * (len(s) - 1)) * height
-    x = C - total / 2
-    out = []
-    for ch, w in zip(s, widths):
-        out.append((x, top, height, LETTERS[ch][1], stroke / height))
-        x += (w + gap) * height
-    return out
-
-
-def hatch(spacing=5.2, inset=3.2, margin=3.0):
-    """'/' lines (x + y = c) inside the circle, outside the picture; as (x1, y1, x2, y2)."""
-    r = R - inset
-    l, t, rr, b = RECT[0] - margin, RECT[1] - margin, RECT[2] + margin, RECT[3] + margin
-    segs = []
-    k = math.floor(-r * math.sqrt(2) / spacing)
-    while k * spacing <= r * math.sqrt(2):
-        d = k * spacing  # distance of the line from the centre, along (1, 1) / √2
-        k += 1
-        if abs(d) >= r:
-            continue
-        half = math.sqrt(r * r - d * d)
-        # Points: centre + d·n + s·u, n = (1, 1)/√2, u = (1, −1)/√2.
-        def point(s):
-            return (C + (d + s) / math.sqrt(2), C + (d - s) / math.sqrt(2))
-        # Where the line crosses the rectangle, in s.
-        lo, hi = -half, half
-        cut = []
-        s_vals = []
-        for (x0, y0, x1, y1) in [(l, t, rr, t), (l, b, rr, b), (l, t, l, b), (rr, t, rr, b)]:
-            # Solve for s where the point lies on this edge.
-            if y0 == y1:
-                s = (d - (y0 - C) * math.sqrt(2))
-                px, _ = point(s)
-                if x0 - 1e-9 <= px <= x1 + 1e-9:
-                    s_vals.append(s)
-            else:
-                s = (x0 - C) * math.sqrt(2) - d
-                _, py = point(s)
-                if y0 - 1e-9 <= py <= y1 + 1e-9:
-                    s_vals.append(s)
-        if len(s_vals) >= 2:
-            cut = [min(s_vals), max(s_vals)]
-        parts = [(lo, hi)] if not cut else [(lo, min(hi, cut[0])), (max(lo, cut[1]), hi)]
-        for a, bnd in parts:
-            if bnd - a > 1.0:
-                x1, y1 = point(a)
-                x2, y2 = point(bnd)
-                segs.append((x1, y1, x2, y2))
-    return segs
+def line(s, size, baseline, tracking=0.0):
+    """(x, baseline, scale, outline) per character: [s] centred on the canvas by its ink, caps
+    [size] dp high, letters [tracking] font units closer (negative) or apart."""
+    scale = size / 700.0
+    xs = []
+    x = 0.0
+    for i, ch in enumerate(s):
+        left, right, _ = GLYPHS[ch]
+        if i:
+            x += tracking
+        xs.append(x - left)  # where this glyph's origin goes so its ink starts at x
+        x += right - left
+    width = x * scale
+    start = C - width / 2
+    return [(start + ox * scale, baseline, scale, GLYPHS[ch][2]) for ch, ox in zip(s, xs)]
 
 
 def f(v):
-    return f"{v:.2f}".rstrip("0").rstrip(".")
+    return f"{v:.3f}".rstrip("0").rstrip(".")
 
 
 def build():
-    hatch_path = " ".join(f"M{f(a)},{f(b)} L{f(c)},{f(d)}" for a, b, c, d in hatch())
-    circle_path = f"M{f(C - R)},{f(C)} A{f(R)},{f(R)} 0 1,0 {f(C + R)},{f(C)} A{f(R)},{f(R)} 0 1,0 {f(C - R)},{f(C)} Z"
     l, t, r, b = RECT
-    rect_path = f"M{f(l)},{f(t)} L{f(r)},{f(t)} L{f(r)},{f(b)} L{f(l)},{f(b)} Z"
-    letters = text("360°", 10.0, 43.0, 0.24, 2.1) + text("MAGIK", 7.6, 57.4, 0.26, 1.9)
-    return hatch_path, circle_path, rect_path, letters
+    # The circle with the picture cut out (even-odd): the solid part of the sketch.
+    ring = (f"M{f(C - R)},{f(C)} A{f(R)},{f(R)} 0 1,0 {f(C + R)},{f(C)} A{f(R)},{f(R)} 0 1,0 {f(C - R)},{f(C)} Z "
+            f"M{f(l)},{f(t)} L{f(r)},{f(t)} L{f(r)},{f(b)} L{f(l)},{f(b)} Z")
+    letters = line("360°", 11.4, 53.6, tracking=40) + line("MAGIK", 8.4, 65.8, tracking=60)
+    return ring, letters
 
 
-def vector(hatch_path, circle_path, rect_path, letters):
-    def p(d, w):
-        return (f'    <path android:pathData="{d}" android:strokeColor="{TEAL}" android:strokeWidth="{f(w)}"\n'
-                f'        android:strokeLineCap="round" android:strokeLineJoin="round" android:fillColor="#00000000" />\n')
+def vector(ring, letters):
     s = ('<?xml version="1.0" encoding="utf-8"?>\n'
-         '<!-- Generated by tools/make-icon.py from the owner\'s sketch; edit the script, not this file. -->\n'
+         '<!-- Generated by tools/make-icon.py from the owner\'s sketch; edit the script, not this file.\n'
+         '     Letters: PT Serif Bold outlines, (c) 2010 ParaType Ltd., SIL Open Font License 1.1. -->\n'
          '<vector xmlns:android="http://schemas.android.com/apk/res/android"\n'
-         '    android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108">\n')
-    s += p(hatch_path, 1.5) + p(circle_path, 2.8) + p(rect_path, 2.3)
-    for x, y, h, d, w in letters:
-        s += (f'    <group android:translateX="{f(x)}" android:translateY="{f(y)}" android:scaleX="{f(h)}" android:scaleY="{f(h)}">\n'
-              f'    {p(d, w).strip()}\n    </group>\n')
+         '    android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108">\n'
+         f'    <path android:pathData="{ring}" android:fillColor="{TEAL}" android:fillType="evenOdd" />\n')
+    for x, y, k, d in letters:
+        s += (f'    <group android:translateX="{f(x)}" android:translateY="{f(y)}" android:scaleX="{f(k)}" android:scaleY="{f(-k)}">\n'
+              f'        <path android:pathData="{d}" android:fillColor="{TEAL}" />\n'
+              '    </group>\n')
     return s + "</vector>\n"
 
 
-def svg(hatch_path, circle_path, rect_path, letters, size=512):
-    def p(d, w):
-        return f'<path d="{d}" stroke="{TEAL}" stroke-width="{f(w)}" stroke-linecap="round" stroke-linejoin="round" fill="none"/>'
-    body = p(hatch_path, 1.5) + p(circle_path, 2.8) + p(rect_path, 2.3)
-    for x, y, h, d, w in letters:
-        body += f'<g transform="translate({f(x)} {f(y)}) scale({f(h)})">{p(d, w)}</g>'
+def svg(ring, letters, size=512):
+    body = f'<path d="{ring}" fill="{TEAL}" fill-rule="evenodd"/>'
+    for x, y, k, d in letters:
+        body += f'<path transform="translate({f(x)} {f(y)}) scale({f(k)} {f(-k)})" d="{d}" fill="{TEAL}"/>'
     # The full 108 canvas on white, like the launcher's square mask.
     return (f'<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" viewBox="0 0 108 108">'
+            f'<!-- insvMagik icon, generated by tools/make-icon.py. Letters: PT Serif Bold, (c) 2010 ParaType Ltd., SIL OFL 1.1. -->'
             f'<rect width="108" height="108" fill="#ffffff"/>{body}</svg>\n')
 
 
+def write(path, text):
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "w", encoding="utf-8", newline="\n") as fh:
+        fh.write(text)
+
+
 def main():
-    parts = build()
-    os.makedirs(os.path.join(RES, "drawable"), exist_ok=True)
-    os.makedirs(os.path.join(RES, "mipmap-anydpi-v26"), exist_ok=True)
-    os.makedirs(os.path.join(RES, "values"), exist_ok=True)
-    with open(os.path.join(RES, "drawable", "ic_launcher_foreground.xml"), "w", encoding="utf-8", newline="\n") as fh:
-        fh.write(vector(*parts))
+    ring, letters = build()
+    write(os.path.join(RES, "drawable", "ic_launcher_foreground.xml"), vector(ring, letters))
     adaptive = ('<?xml version="1.0" encoding="utf-8"?>\n'
                 '<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">\n'
                 '    <background android:drawable="@color/ic_launcher_background" />\n'
@@ -145,16 +107,13 @@ def main():
                 '    <monochrome android:drawable="@drawable/ic_launcher_foreground" />\n'
                 '</adaptive-icon>\n')
     for name in ("ic_launcher.xml", "ic_launcher_round.xml"):
-        with open(os.path.join(RES, "mipmap-anydpi-v26", name), "w", encoding="utf-8", newline="\n") as fh:
-            fh.write(adaptive)
-    with open(os.path.join(RES, "values", "ic_launcher_colors.xml"), "w", encoding="utf-8", newline="\n") as fh:
-        fh.write('<?xml version="1.0" encoding="utf-8"?>\n<resources>\n'
-                 '    <color name="ic_launcher_background">#FFFFFF</color>\n</resources>\n')
-    art = os.path.join(ROOT, "art")
-    os.makedirs(art, exist_ok=True)
-    with open(os.path.join(art, "icon.svg"), "w", encoding="utf-8", newline="\n") as fh:
-        fh.write(svg(*parts))
-    print("wrote", os.path.normpath(RES), "and", os.path.normpath(os.path.join(art, "icon.svg")))
+        write(os.path.join(RES, "mipmap-anydpi-v26", name), adaptive)
+    write(os.path.join(RES, "values", "ic_launcher_colors.xml"),
+          '<?xml version="1.0" encoding="utf-8"?>\n<resources>\n'
+          '    <color name="ic_launcher_background">#FFFFFF</color>\n</resources>\n')
+    art = os.path.join(ROOT, "art", "icon.svg")
+    write(art, svg(ring, letters))
+    print("wrote", os.path.normpath(RES), "and", os.path.normpath(art))
 
 
 if __name__ == "__main__":
